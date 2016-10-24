@@ -10,6 +10,28 @@ sqlplus:
 
 sqlplus myuser/mypassword@mydatabase < example.sql
 
+Directories:
+
+ash - Active Session History related
+
+force_matching_signature - Queries that use force_matching_signature
+
+misc - Standalone queries
+
+optimizerstatistics - Values that the optimizer uses
+
+perfprofile - Performance profiles from V$ tables
+
+plan - Scripts to show a query plan
+
+refresh - Refresh tables using export and import
+
+resourcemanager - Resource manager queries
+
+spaceproddbs - Space and related queries
+
+testselectpackage - Package to extract and test select statements
+
 - Bobby Durrett
 
 http://www.bobbydurrettdba.com/
