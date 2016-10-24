@@ -1,0 +1,11 @@
+@tablelist.sql
+@colpartstats.sql
+@columnstats.sql
+@histograms.sql
+@indexcolumns.sql
+@indexstats.sql
+@indpartstats.sql
+@parthists.sql
+@tablestats.sql
+@tabpartstats.sql
+@tabsubpartstats.sql
