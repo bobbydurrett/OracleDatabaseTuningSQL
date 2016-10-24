@@ -1,0 +1,2723 @@
+SQL> 
+SQL> -- show database version
+SQL> 
+SQL> select * from v$version;
+
+BANNER
+--------------------------------------------------------------------------------
+Oracle Database 11g Enterprise Edition Release 11.2.0.3.0 - 64bit Production
+PL/SQL Release 11.2.0.3.0 - Production
+CORE	11.2.0.3.0	Production
+TNS for Linux: Version 11.2.0.3.0 - Production
+NLSRTL Version 11.2.0.3.0 - Production
+
+SQL> 
+SQL> -- create example users
+SQL> -- produser - represents prod schema on prod database
+SQL> -- testuser - test user on test database
+SQL> -- for this test is one database but works with two.
+SQL> 
+SQL> create user produser identified by produser;
+
+User created.
+
+SQL> 
+SQL> grant create session to produser;
+
+Grant succeeded.
+
+SQL> grant select any dictionary to produser;
+
+Grant succeeded.
+
+SQL> grant resource to produser;
+
+Grant succeeded.
+
+SQL> grant select any table to produser;
+
+Grant succeeded.
+
+SQL> grant execute any procedure to produser;
+
+Grant succeeded.
+
+SQL> grant create procedure to produser;
+
+Grant succeeded.
+
+SQL> grant execute on SYS.dbms_workload_repository to produser;
+
+Grant succeeded.
+
+SQL> 
+SQL> create user testuser identified by testuser;
+
+User created.
+
+SQL> 
+SQL> grant create session to testuser;
+
+Grant succeeded.
+
+SQL> grant select any dictionary to testuser;
+
+Grant succeeded.
+
+SQL> grant resource to testuser;
+
+Grant succeeded.
+
+SQL> grant select any table to testuser;
+
+Grant succeeded.
+
+SQL> grant execute any procedure to testuser;
+
+Grant succeeded.
+
+SQL> grant create procedure to testuser;
+
+Grant succeeded.
+
+SQL> grant create database link to testuser;
+
+Grant succeeded.
+
+SQL> 
+SQL> connect produser/produser
+Connected.
+SQL> 
+SQL> -- create table and load it with data
+SQL> 
+SQL> create table test_table as select * from dba_tables;
+
+Table created.
+
+SQL> 
+SQL> insert /*+append */ into test_table select * from test_table
+  2  where table_name <> 'DUAL';
+
+2845 rows created.
+
+SQL> commit;
+
+Commit complete.
+
+SQL> 
+SQL> insert /*+append */ into test_table select * from test_table
+  2  where table_name <> 'DUAL';
+
+5690 rows created.
+
+SQL> commit;
+
+Commit complete.
+
+SQL> 
+SQL> insert /*+append */ into test_table select * from test_table
+  2  where table_name <> 'DUAL';
+
+11380 rows created.
+
+SQL> commit;
+
+Commit complete.
+
+SQL> 
+SQL> insert /*+append */ into test_table select * from test_table
+  2  where table_name <> 'DUAL';
+
+22760 rows created.
+
+SQL> commit;
+
+Commit complete.
+
+SQL> 
+SQL> insert /*+append */ into test_table select * from test_table
+  2  where table_name <> 'DUAL';
+
+45520 rows created.
+
+SQL> commit;
+
+Commit complete.
+
+SQL> 
+SQL> insert /*+append */ into test_table select * from test_table
+  2  where table_name <> 'DUAL';
+
+91040 rows created.
+
+SQL> commit;
+
+Commit complete.
+
+SQL> 
+SQL> insert /*+append */ into test_table select * from test_table
+  2  where table_name <> 'DUAL';
+
+182080 rows created.
+
+SQL> commit;
+
+Commit complete.
+
+SQL> 
+SQL> insert /*+append */ into test_table select * from test_table
+  2  where table_name <> 'DUAL';
+
+364160 rows created.
+
+SQL> commit;
+
+Commit complete.
+
+SQL> 
+SQL> insert /*+append */ into test_table select * from test_table
+  2  where table_name <> 'DUAL';
+
+728320 rows created.
+
+SQL> commit;
+
+Commit complete.
+
+SQL> 
+SQL> insert /*+append */ into test_table select * from test_table
+  2  where table_name <> 'DUAL';
+
+1456640 rows created.
+
+SQL> commit;
+
+Commit complete.
+
+SQL> 
+SQL> execute dbms_stats.gather_table_stats('PRODUSER','TEST_TABLE');
+
+PL/SQL procedure successfully completed.
+
+SQL> 
+SQL> execute dbms_workload_repository.create_snapshot;
+
+PL/SQL procedure successfully completed.
+
+SQL> 
+SQL> -- query that would benefit from an index
+SQL> 
+SQL> select blocks from produser.test_table where owner='SYS' and table_name='DUAL';
+
+    BLOCKS
+----------
+         1
+
+SQL> 
+SQL> -- query that wouldn't benefit from an index
+SQL> 
+SQL> select sum(blocks) from produser.test_table;
+
+SUM(BLOCKS)
+-----------
+   46157825
+
+SQL> 
+SQL> execute dbms_workload_repository.create_snapshot;
+
+PL/SQL procedure successfully completed.
+
+SQL> 
+SQL> -- install package
+SQL> 
+SQL> drop table plan_table;
+drop table plan_table
+           *
+ERROR at line 1:
+ORA-00942: table or view does not exist
+
+
+SQL> 
+SQL> @$ORACLE_HOME/rdbms/admin/utlxplan.sql
+SQL> rem
+SQL> rem $Header: utlxplan.sql 08-may-2004.12:53:19 bdagevil Exp $ xplainpl.sql
+SQL> rem
+SQL> Rem Copyright (c) 1988, 2004, Oracle. All rights reserved.
+SQL> Rem NAME
+SQL> REM    UTLXPLAN.SQL
+SQL> Rem  FUNCTION
+SQL> Rem  NOTES
+SQL> Rem  MODIFIED
+SQL> Rem     bdagevil	05/08/04  - add other_xml column
+SQL> Rem     bdagevil	06/18/03  - rename hint alias to object_alias
+SQL> Rem     ddas	06/03/03  - increase size of hint alias column
+SQL> Rem     bdagevil	02/13/03  - add plan_id and depth column
+SQL> Rem     ddas	01/17/03  - add query_block and hint_alias columns
+SQL> Rem     ddas	11/04/02  - revert timestamp column to DATE (PL/SQL problem)
+SQL> Rem     ddas	10/28/02  - change type of timestamp column to TIMESTAMP
+SQL> Rem     ddas	10/03/02  - add estimated_time column
+SQL> Rem     mzait	04/16/02  - add row vector to the plan table
+SQL> Rem     mzait	10/26/01  - add keys and filter predicates to the plan table
+SQL> Rem     ddas	05/05/00  - increase length of options column
+SQL> Rem     ddas	04/17/00  - add CPU, I/O cost, temp_space columns
+SQL> Rem     mzait	02/19/98 -  add distribution method column
+SQL> Rem     ddas	05/17/96 -  change search_columns to number
+SQL> Rem     achaudhr	07/23/95 -  PTI: Add columns partition_{start, stop, id}
+SQL> Rem     glumpkin	08/25/94 -  new optimizer fields
+SQL> Rem     jcohen	11/05/93 -  merge changes from branch 1.1.710.1 - 9/24
+SQL> Rem     jcohen	09/24/93 -  #163783 add optimizer column
+SQL> Rem     glumpkin	10/25/92 -  Renamed from XPLAINPL.SQL
+SQL> Rem     jcohen	05/22/92 -  #79645 - set node width to 128 (M_XDBI in gendef)
+SQL> Rem     rlim	04/29/91 -  change char to varchar2
+SQL> Rem     Peeler	10/19/88 - Creation
+SQL> Rem
+SQL> Rem This is the format for the table that is used by the EXPLAIN PLAN
+SQL> Rem statement.  The explain statement requires the presence of this
+SQL> Rem table in order to store the descriptions of the row sources.
+SQL> 
+SQL> create table PLAN_TABLE (
+  2  	     statement_id	varchar2(30),
+  3  	     plan_id		number,
+  4  	     timestamp		date,
+  5  	     remarks		varchar2(4000),
+  6  	     operation		varchar2(30),
+  7  	     options		varchar2(255),
+  8  	     object_node	varchar2(128),
+  9  	     object_owner	varchar2(30),
+ 10  	     object_name	varchar2(30),
+ 11  	     object_alias	varchar2(65),
+ 12  	     object_instance	numeric,
+ 13  	     object_type	varchar2(30),
+ 14  	     optimizer		varchar2(255),
+ 15  	     search_columns	number,
+ 16  	     id 		numeric,
+ 17  	     parent_id		numeric,
+ 18  	     depth		numeric,
+ 19  	     position		numeric,
+ 20  	     cost		numeric,
+ 21  	     cardinality	numeric,
+ 22  	     bytes		numeric,
+ 23  	     other_tag		varchar2(255),
+ 24  	     partition_start	varchar2(255),
+ 25  	     partition_stop	varchar2(255),
+ 26  	     partition_id	numeric,
+ 27  	     other		long,
+ 28  	     distribution	varchar2(30),
+ 29  	     cpu_cost		numeric,
+ 30  	     io_cost		numeric,
+ 31  	     temp_space 	numeric,
+ 32  	     access_predicates	varchar2(4000),
+ 33  	     filter_predicates	varchar2(4000),
+ 34  	     projection 	varchar2(4000),
+ 35  	     time		numeric,
+ 36  	     qblock_name	varchar2(30),
+ 37  	     other_xml		clob
+ 38  );
+
+Table created.
+
+SQL> 
+SQL> @tables.sql
+SQL> drop table select_statements;
+drop table select_statements
+           *
+ERROR at line 1:
+ORA-00942: table or view does not exist
+
+
+SQL> 
+SQL> create table select_statements
+  2  (sqlnumber number,
+  3  sql_text clob);
+
+Table created.
+
+SQL> 
+SQL> create unique index select_statements_i1 on select_statements(sqlnumber);
+
+Index created.
+
+SQL> 
+SQL> drop table test_results;
+drop table test_results
+           *
+ERROR at line 1:
+ORA-00942: table or view does not exist
+
+
+SQL> 
+SQL> create table test_results
+  2  (test_name varchar2(2000),
+  3  sqlnumber number,
+  4  sql_id VARCHAR2(13),
+  5  explain_plan_hash number,
+  6  execute_plan_hash number,
+  7  rows_fetched number,
+  8  elapsed_in_seconds number,
+  9  CPU_used_by_this_session number,
+ 10  consistent_gets number,
+ 11  db_block_gets number,
+ 12  parse_time_elapsed number,
+ 13  physical_reads number,
+ 14  error_message varchar2(64));
+
+Table created.
+
+SQL> 
+SQL> create unique index test_results_i1 on test_results(test_name,sqlnumber);
+
+Index created.
+
+SQL> create index test_results_i2 on test_results(sqlnumber);
+
+Index created.
+
+SQL> @package.sql
+SQL> CREATE OR REPLACE PACKAGE TEST_SELECT AS
+  2  
+  3  /*
+  4  
+  5  collect_select_statements(max_number_selects,
+  6  include_pattern1,...,include_pattern10,
+  7  exclude_pattern1,...,exclude_pattern10) - This proc is run on the
+  8  the source database to collect select statements including statements that have
+  9  the include patterns and excluding those whohave the exclude patterns.
+ 10  Patterns use LIKE conditions %x%.
+ 11  
+ 12  */
+ 13  
+ 14  procedure collect_select_statements(
+ 15  	max_number_selects in number,
+ 16  	include_pattern1 in varchar2 := '%%',
+ 17  	include_pattern2 in varchar2 := '%%',
+ 18  	include_pattern3 in varchar2 := '%%',
+ 19  	include_pattern4 in varchar2 := '%%',
+ 20  	include_pattern5 in varchar2 := '%%',
+ 21  	include_pattern6 in varchar2 := '%%',
+ 22  	include_pattern7 in varchar2 := '%%',
+ 23  	include_pattern8 in varchar2 := '%%',
+ 24  	include_pattern9 in varchar2 := '%%',
+ 25  	include_pattern10 in varchar2 := '%%',
+ 26  	exclude_pattern1 in varchar2 := ' ',
+ 27  	exclude_pattern2 in varchar2 := ' ',
+ 28  	exclude_pattern3 in varchar2 := ' ',
+ 29  	exclude_pattern4 in varchar2 := ' ',
+ 30  	exclude_pattern5 in varchar2 := ' ',
+ 31  	exclude_pattern6 in varchar2 := ' ',
+ 32  	exclude_pattern7 in varchar2 := ' ',
+ 33  	exclude_pattern8 in varchar2 := ' ',
+ 34  	exclude_pattern9 in varchar2 := ' ',
+ 35  	exclude_pattern10 in varchar2 := ' ');
+ 36  
+ 37  /*
+ 38  
+ 39  copy_select_statements(link_name)
+ 40  copies select statements from remote source database
+ 41  pointed to by link_name's db link.
+ 42  
+ 43  */
+ 44  
+ 45  procedure copy_select_statements(
+ 46  	link_name in varchar2);
+ 47  
+ 48  /*
+ 49  
+ 50  update_select_statements(from_text,to_text) - updates select statement text.
+ 51  Used to change table names and schema names.  I.e. from prodschema.prodtablename
+ 52  to testschema.testtablename.
+ 53  
+ 54  */
+ 55  
+ 56  procedure update_select_statements(
+ 57  	from_text in varchar2,
+ 58  	to_text in varchar2);
+ 59  
+ 60  /*
+ 61  
+ 62  get_explain_plans(test_name) - runs explain plan against every select recording the
+ 63  current test name.  I.e. get_explain_plans('production stats').  Plans are stored in
+ 64  plan_table by sqlnumber.
+ 65  
+ 66  */
+ 67  
+ 68  procedure get_explain_plans(
+ 69  	test_name in varchar2);
+ 70  
+ 71  /*
+ 72  
+ 73  execute_all(test_name) - execute every query for the current test scenario.
+ 74  
+ 75  */
+ 76  
+ 77  procedure execute_all(
+ 78  	test_name in varchar2);
+ 79  
+ 80  /*
+ 81  
+ 82  execute_diff_plans(test_name,compared_to_test_name) - execute only the queries
+ 83  whose plan under the current test_name differ from previous test name
+ 84  compared_to_test_name.  So, if test_name is "Production stats" and
+ 85  compared_to_test_name is "Empty stats" then we assume you have run get_explain_plans
+ 86  for both "Production stats" and "Empty stats" and only run the sqls whose plans
+ 87  are different in the two scenarios.
+ 88  
+ 89  */
+ 90  
+ 91  procedure execute_diff_plans(
+ 92  	v_test_name in varchar2,
+ 93  	compared_to_test_name in varchar2);
+ 94  
+ 95  /*
+ 96  
+ 97  display_results(test_name,compared_to_test_name) - output results of testings in the
+ 98  two scenarios.  List results from all queries that ran more than 3 times as long
+ 99  with one test or the other.  Also summarize results with total elapsed time,
+100  number of queries executed, average elapsed time, and percent improvement.
+101  
+102  */
+103  
+104  procedure display_results(
+105  	v_test_name in varchar2,
+106  	compared_to_test_name in varchar2);
+107  
+108  /*
+109  
+110  show_explained_plan(test_name,sqlnumber) - extract plan from plan_table for given test name
+111  and sql statement.
+112  
+113  */
+114  
+115  function show_explained_plan(
+116  	v_test_name in varchar2,
+117  	sqlnumber in number) return CLOB;
+118  
+119  /*
+120  
+121  reexecute_errored(v_test_name) - re-execute every query for the current test scenario
+122  that had an error.
+123  
+124  */
+125  
+126  procedure reexecute_errored(
+127  	v_test_name in varchar2);
+128  
+129  /*
+130  
+131  show_executed_plan(test_name,sqlnumber) - extract plan from plan_table for given test name
+132  and sql statement.
+133  
+134  */
+135  
+136  procedure show_executed_plan(
+137  	v_test_name in varchar2,
+138  	v_sqlnumber in number);
+139  
+140  END;
+141  /
+
+Package created.
+
+SQL> show errors
+No errors.
+SQL> 
+SQL> CREATE OR REPLACE PACKAGE BODY TEST_SELECT
+  2  AS
+  3  
+  4  procedure collect_select_statements(
+  5  	max_number_selects in number,
+  6  	include_pattern1 in varchar2 := '%%',
+  7  	include_pattern2 in varchar2 := '%%',
+  8  	include_pattern3 in varchar2 := '%%',
+  9  	include_pattern4 in varchar2 := '%%',
+ 10  	include_pattern5 in varchar2 := '%%',
+ 11  	include_pattern6 in varchar2 := '%%',
+ 12  	include_pattern7 in varchar2 := '%%',
+ 13  	include_pattern8 in varchar2 := '%%',
+ 14  	include_pattern9 in varchar2 := '%%',
+ 15  	include_pattern10 in varchar2 := '%%',
+ 16  	exclude_pattern1 in varchar2 := ' ',
+ 17  	exclude_pattern2 in varchar2 := ' ',
+ 18  	exclude_pattern3 in varchar2 := ' ',
+ 19  	exclude_pattern4 in varchar2 := ' ',
+ 20  	exclude_pattern5 in varchar2 := ' ',
+ 21  	exclude_pattern6 in varchar2 := ' ',
+ 22  	exclude_pattern7 in varchar2 := ' ',
+ 23  	exclude_pattern8 in varchar2 := ' ',
+ 24  	exclude_pattern9 in varchar2 := ' ',
+ 25  	exclude_pattern10 in varchar2 := ' ')
+ 26   is
+ 27  	 CURSOR SQL_CURSOR IS
+ 28  	     SELECT DISTINCT
+ 29  		 SQL_ID,
+ 30  		 DBID
+ 31  	     FROM DBA_HIST_SQLSTAT;
+ 32  	 SQL_REC SQL_CURSOR%ROWTYPE;
+ 33  	 CURSOR TEXT_CURSOR(SQL_ID_ARGUMENT VARCHAR2,DBID_ARGUMENT NUMBER) IS
+ 34  	     SELECT
+ 35  		 SQL_TEXT
+ 36  	     FROM DBA_HIST_SQLTEXT
+ 37  	     WHERE
+ 38  		 SQL_TEXT like include_pattern1 and
+ 39  		 SQL_TEXT like include_pattern2 and
+ 40  		 SQL_TEXT like include_pattern3 and
+ 41  		 SQL_TEXT like include_pattern4 and
+ 42  		 SQL_TEXT like include_pattern5 and
+ 43  		 SQL_TEXT like include_pattern6 and
+ 44  		 SQL_TEXT like include_pattern7 and
+ 45  		 SQL_TEXT like include_pattern8 and
+ 46  		 SQL_TEXT like include_pattern9 and
+ 47  		 SQL_TEXT like include_pattern10 and
+ 48  		 SQL_TEXT not like exclude_pattern1 and
+ 49  		 SQL_TEXT not like exclude_pattern2 and
+ 50  		 SQL_TEXT not like exclude_pattern3 and
+ 51  		 SQL_TEXT not like exclude_pattern4 and
+ 52  		 SQL_TEXT not like exclude_pattern5 and
+ 53  		 SQL_TEXT not like exclude_pattern6 and
+ 54  		 SQL_TEXT not like exclude_pattern7 and
+ 55  		 SQL_TEXT not like exclude_pattern8 and
+ 56  		 SQL_TEXT not like exclude_pattern9 and
+ 57  		 SQL_TEXT not like exclude_pattern10 and
+ 58  		 (upper(SQL_TEXT) like 'SELECT%' or
+ 59  		  upper(SQL_TEXT) like 'WITH%') and
+ 60  		 SQL_ID = SQL_ID_ARGUMENT and
+ 61  		 DBID = DBID_ARGUMENT;
+ 62  	 TEXT_REC TEXT_CURSOR%ROWTYPE;
+ 63  	 sqlnumber number;
+ 64  	 tempclob clob;
+ 65  	 next_sqlnumber number;
+ 66  begin
+ 67  -- get next sql number based on number of queries already collected
+ 68  	 select count(*)+1 into next_sqlnumber from select_statements;
+ 69  	 sqlnumber := next_sqlnumber ;
+ 70  	 OPEN SQL_CURSOR;
+ 71  	 LOOP
+ 72  	     FETCH SQL_CURSOR INTO SQL_REC;
+ 73  	     EXIT WHEN SQL_CURSOR%NOTFOUND;
+ 74  
+ 75  	     OPEN TEXT_CURSOR(SQL_REC.SQL_ID,SQL_REC.DBID);
+ 76  	     LOOP
+ 77  		 FETCH TEXT_CURSOR INTO TEXT_REC;
+ 78  		 EXIT WHEN TEXT_CURSOR%NOTFOUND;
+ 79  		 insert into select_statements values (sqlnumber,TEXT_REC.SQL_TEXT);
+ 80  		 commit;
+ 81  		 sqlnumber := sqlnumber + 1;
+ 82  	      END LOOP;
+ 83  	     CLOSE TEXT_CURSOR;
+ 84  	     EXIT WHEN sqlnumber >= (max_number_selects+next_sqlnumber);
+ 85  	  END LOOP;
+ 86  	 CLOSE SQL_CURSOR;
+ 87  end collect_select_statements;
+ 88  
+ 89  procedure copy_select_statements(
+ 90  	link_name in varchar2)
+ 91  is
+ 92  begin
+ 93    execute immediate 'truncate table select_statements';
+ 94    execute immediate 'insert into select_statements select * from '||
+ 95  	 'select_statements@'||link_name;
+ 96    commit;
+ 97  end copy_select_statements;
+ 98  
+ 99  procedure update_error(
+100  v_test_name in varchar2,
+101  v_sqlnumber in number,
+102  v_sqlerrm in varchar2)
+103  is
+104  row_cnt number;
+105  trimmed_errm varchar2(64);
+106  begin
+107  
+108    trimmed_errm := substr(v_sqlerrm,1,64);
+109  
+110    select count(*) into row_cnt
+111    from test_results t
+112    where
+113    t.test_name=v_test_name and
+114    t.sqlnumber=v_sqlnumber;
+115  
+116    if row_cnt > 0 then
+117  	 update test_results t
+118  	 set
+119  	 error_message=trimmed_errm
+120  	 where
+121  	   t.test_name=v_test_name and
+122  	   t.sqlnumber=v_sqlnumber;
+123    else
+124  	 insert into test_results
+125  	 (test_name,sqlnumber,error_message)
+126  	 values (
+127  	   v_test_name,
+128  	   v_sqlnumber,
+129  	   trimmed_errm);
+130    end if;
+131    commit;
+132  
+133  end update_error;
+134  
+135  procedure update_select_statements(
+136  	from_text in varchar2,
+137  	to_text in varchar2)
+138   is
+139  begin
+140  
+141  update select_statements
+142  set SQL_TEXT = replace(SQL_TEXT,from_text,to_text);
+143  
+144  commit;
+145  
+146  end update_select_statements;
+147  
+148  procedure update_explain_plan_hash(
+149  v_test_name in varchar2,
+150  v_sqlnumber in number)
+151   is
+152  	 planoutput clob;
+153  	 plan_hash_value number;
+154  	 row_cnt number;
+155  
+156  begin
+157  
+158    select t.PLAN_TABLE_OUTPUT
+159    into planoutput
+160    from table(dbms_xplan.display('PLAN_TABLE',v_test_name||to_char(v_sqlnumber),'BASIC')) t
+161    where t.plan_table_output like 'Plan%';
+162  
+163    plan_hash_value:=to_number(substr(planoutput,18));
+164  
+165    select count(*) into row_cnt
+166    from test_results t
+167    where
+168    t.test_name=v_test_name and
+169    t.sqlnumber=v_sqlnumber;
+170  
+171    if row_cnt > 0 then
+172  	 update test_results t
+173  	 set explain_plan_hash=plan_hash_value
+174  	 where
+175  	   t.test_name=v_test_name and
+176  	   t.sqlnumber=v_sqlnumber;
+177    else
+178  	 insert into test_results
+179  	 (test_name,sqlnumber,explain_plan_hash)
+180  	 values (
+181  	   v_test_name,
+182  	   v_sqlnumber,
+183  	   plan_hash_value);
+184    end if;
+185    commit;
+186  
+187  
+188  end update_explain_plan_hash;
+189  
+190  procedure get_explain_plans(
+191  test_name in varchar2)
+192   is
+193  	 CURSOR SQL_CURSOR IS
+194  	     SELECT
+195  		 sqlnumber,
+196  		 sql_text
+197  	     FROM select_statements
+198  	     ORDER by sqlnumber;
+199  	 SQL_REC SQL_CURSOR%ROWTYPE;
+200  	 clob_cursor INTEGER;
+201  	 sqlclob clob;
+202  	 ignored_value INTEGER;
+203  
+204  begin
+205  
+206  	 execute immediate 'delete from plan_table where statement_id like '''||test_name||'%''';
+207  
+208  	 commit;
+209  
+210  	 OPEN SQL_CURSOR;
+211  	 LOOP
+212  	     FETCH SQL_CURSOR INTO SQL_REC;
+213  	     EXIT WHEN SQL_CURSOR%NOTFOUND;
+214  
+215  	     sqlclob := 'explain plan set statement_id = '''||test_name||SQL_REC.sqlnumber||''' into plan_table for '||
+216  			SQL_REC.sql_text;
+217  
+218  	     begin
+219  	       clob_cursor := DBMS_SQL.OPEN_CURSOR;
+220  	       DBMS_SQL.PARSE (clob_cursor,sqlclob,DBMS_SQL.NATIVE);
+221  	       ignored_value := DBMS_SQL.EXECUTE(clob_cursor);
+222  	       DBMS_SQL.CLOSE_CURSOR (clob_cursor);
+223  
+224  	       update_explain_plan_hash(test_name,SQL_REC.sqlnumber);
+225  	       DBMS_OUTPUT.put_line('Plan explained for SQL number '||SQL_REC.sqlnumber);
+226  
+227  	     EXCEPTION
+228  	       WHEN others THEN
+229  		 DBMS_OUTPUT.put_line('Error on SQL number '||SQL_REC.sqlnumber);
+230  		 DBMS_OUTPUT.put_line(SQLERRM);
+231  		 update_error(test_name,SQL_REC.sqlnumber,SQLERRM);
+232  	     end;
+233  	     commit;
+234  	  END LOOP;
+235  	 CLOSE SQL_CURSOR;
+236  
+237  end get_explain_plans;
+238  
+239  procedure runselect(
+240  	    v_test_name in varchar2,
+241  	    v_sqlnumber in number,
+242  	    sqlclob  in clob) is
+243  	 clob_cursor INTEGER;
+244  	 rows_fetched INTEGER;
+245  	 before_date date;
+246  	 after_date date;
+247  	 total_rows_fetched NUMBER;
+248  	 elapsed_time_seconds NUMBER;
+249  	 row_cnt number;
+250  	 query_sql_id varchar2(13);
+251  	 planoutput clob;
+252  	 plan_hash_value number;
+253  	 cursor_child_no number;
+254  	 b_CPU_used_by_this_session number;
+255  	 b_consistent_gets number;
+256  	 b_db_block_gets number;
+257  	 b_parse_time_elapsed number;
+258  	 b_physical_reads number;
+259  	 a_CPU_used_by_this_session number;
+260  	 a_consistent_gets number;
+261  	 a_db_block_gets number;
+262  	 a_parse_time_elapsed number;
+263  	 a_physical_reads number;
+264  
+265  BEGIN
+266  	 select sysdate into before_date from dual;
+267  
+268  -- record current values of session statistics
+269  
+270  	 select
+271  	 s1.value CPU_used_by_this_session,
+272  	 s2.value consistent_gets,
+273  	 s3.value db_block_gets,
+274  	 s4.value parse_time_elapsed,
+275  	 s5.value physical_reads
+276  	 into
+277  	 b_CPU_used_by_this_session,
+278  	 b_consistent_gets,
+279  	 b_db_block_gets,
+280  	 b_parse_time_elapsed,
+281  	 b_physical_reads
+282  	 from
+283  	 v$mystat s1,
+284  	 v$mystat s2,
+285  	 v$mystat s3,
+286  	 v$mystat s4,
+287  	 v$mystat s5,
+288  	 V$STATNAME n1,
+289  	 V$STATNAME n2,
+290  	 V$STATNAME n3,
+291  	 V$STATNAME n4,
+292  	 V$STATNAME n5
+293  	 where
+294  	 s1.STATISTIC#=n1.STATISTIC# and
+295  	 n1.name = 'CPU used by this session' and
+296  	 s2.STATISTIC#=n2.STATISTIC# and
+297  	 n2.name = 'consistent gets' and
+298  	 s3.STATISTIC#=n3.STATISTIC# and
+299  	 n3.name = 'db block gets' and
+300  	 s4.STATISTIC#=n4.STATISTIC# and
+301  	 n4.name = 'parse time elapsed' and
+302  	 s5.STATISTIC#=n5.STATISTIC# and
+303  	 n5.name = 'physical reads';
+304  
+305  	 clob_cursor := DBMS_SQL.OPEN_CURSOR;
+306  
+307  	 DBMS_SQL.PARSE (clob_cursor,sqlclob,DBMS_SQL.NATIVE);
+308  
+309  	 rows_fetched := DBMS_SQL.EXECUTE_AND_FETCH (clob_cursor);
+310  	 total_rows_fetched := rows_fetched;
+311  
+312  	 LOOP
+313  	     EXIT WHEN rows_fetched < 1;
+314  	     rows_fetched := DBMS_SQL.FETCH_ROWS (clob_cursor);
+315  	     total_rows_fetched := total_rows_fetched + rows_fetched;
+316  	 END LOOP;
+317  
+318  	 DBMS_SQL.CLOSE_CURSOR (clob_cursor);
+319  
+320  	 SELECT prev_sql_id,PREV_CHILD_NUMBER
+321  	 into query_sql_id,cursor_child_no
+322  	 from v$session
+323  	 where audsid=USERENV('SESSIONID');
+324  
+325  	 select t.PLAN_TABLE_OUTPUT
+326  	 into planoutput
+327  	 from table(dbms_xplan.display_cursor(query_sql_id,cursor_child_no,'BASIC')) t
+328  	 where t.plan_table_output like 'Plan%';
+329  
+330  	 plan_hash_value:=to_number(substr(planoutput,18));
+331  
+332  -- record current values of session statistics
+333  
+334  	 select
+335  	 s1.value CPU_used_by_this_session,
+336  	 s2.value consistent_gets,
+337  	 s3.value db_block_gets,
+338  	 s4.value parse_time_elapsed,
+339  	 s5.value physical_reads
+340  	 into
+341  	 a_CPU_used_by_this_session,
+342  	 a_consistent_gets,
+343  	 a_db_block_gets,
+344  	 a_parse_time_elapsed,
+345  	 a_physical_reads
+346  	 from
+347  	 v$mystat s1,
+348  	 v$mystat s2,
+349  	 v$mystat s3,
+350  	 v$mystat s4,
+351  	 v$mystat s5,
+352  	 V$STATNAME n1,
+353  	 V$STATNAME n2,
+354  	 V$STATNAME n3,
+355  	 V$STATNAME n4,
+356  	 V$STATNAME n5
+357  	 where
+358  	 s1.STATISTIC#=n1.STATISTIC# and
+359  	 n1.name = 'CPU used by this session' and
+360  	 s2.STATISTIC#=n2.STATISTIC# and
+361  	 n2.name = 'consistent gets' and
+362  	 s3.STATISTIC#=n3.STATISTIC# and
+363  	 n3.name = 'db block gets' and
+364  	 s4.STATISTIC#=n4.STATISTIC# and
+365  	 n4.name = 'parse time elapsed' and
+366  	 s5.STATISTIC#=n5.STATISTIC# and
+367  	 n5.name = 'physical reads';
+368  
+369  	 select sysdate into after_date from dual;
+370  
+371  	 elapsed_time_seconds := (after_date-before_date)*24*3600;
+372  
+373  	 select count(*) into row_cnt
+374  	 from test_results t
+375  	 where
+376  	 t.test_name=v_test_name and
+377  	 t.sqlnumber=v_sqlnumber;
+378  
+379  	 if row_cnt > 0 then
+380  	   update test_results t
+381  	   set
+382  	     rows_fetched=total_rows_fetched,
+383  	     elapsed_in_seconds=elapsed_time_seconds,
+384  	     sql_id=query_sql_id,
+385  	     execute_plan_hash=plan_hash_value,
+386  	     CPU_used_by_this_session=a_CPU_used_by_this_session-b_CPU_used_by_this_session,
+387  	     consistent_gets=a_consistent_gets-b_consistent_gets,
+388  	     db_block_gets=a_db_block_gets-b_db_block_gets,
+389  	     parse_time_elapsed=a_parse_time_elapsed-b_parse_time_elapsed,
+390  	     physical_reads=a_physical_reads-b_physical_reads
+391  	   where
+392  	     t.test_name=v_test_name and
+393  	     t.sqlnumber=v_sqlnumber;
+394  	 else
+395  	   insert into test_results
+396  	   (test_name,sqlnumber,rows_fetched,elapsed_in_seconds,sql_id,execute_plan_hash,
+397  	    CPU_used_by_this_session,consistent_gets,db_block_gets,parse_time_elapsed,
+398  	    physical_reads)
+399  	   values (
+400  	     v_test_name,
+401  	     v_sqlnumber,
+402  	     total_rows_fetched,
+403  	     elapsed_time_seconds,
+404  	     query_sql_id,
+405  	     plan_hash_value,
+406  	     a_CPU_used_by_this_session-b_CPU_used_by_this_session,
+407  	     a_consistent_gets-b_consistent_gets,
+408  	     a_db_block_gets-b_db_block_gets,
+409  	     a_parse_time_elapsed-b_parse_time_elapsed,
+410  	     a_physical_reads-b_physical_reads);
+411  	 end if;
+412  
+413  	 commit;
+414  
+415  END runselect;
+416  
+417  procedure execute_all(
+418  test_name in varchar2)
+419   is
+420  	 CURSOR SQL_CURSOR IS
+421  	     SELECT
+422  		 sqlnumber,
+423  		 sql_text
+424  	     FROM select_statements
+425  	     ORDER by sqlnumber;
+426  	 SQL_REC SQL_CURSOR%ROWTYPE;
+427  
+428  begin
+429  
+430  	 OPEN SQL_CURSOR;
+431  	 LOOP
+432  	     FETCH SQL_CURSOR INTO SQL_REC;
+433  	     EXIT WHEN SQL_CURSOR%NOTFOUND;
+434  
+435  	     begin
+436  	       runselect(test_name,
+437  		      SQL_REC.sqlnumber,
+438  		      SQL_REC.sql_text);
+439  
+440  	       DBMS_OUTPUT.put_line('Executed SQL number '||SQL_REC.sqlnumber);
+441  
+442  	     EXCEPTION
+443  	       WHEN others THEN
+444  		 DBMS_OUTPUT.put_line('Error on SQL number '||SQL_REC.sqlnumber);
+445  		 DBMS_OUTPUT.put_line(SQLERRM);
+446  		 update_error(test_name,SQL_REC.sqlnumber,SQLERRM);
+447  	     end;
+448  	     commit;
+449  	  END LOOP;
+450  	 CLOSE SQL_CURSOR;
+451  
+452  end execute_all;
+453  
+454  procedure execute_diff_plans(
+455  	v_test_name in varchar2,
+456  	compared_to_test_name in varchar2)
+457   is
+458  	 CURSOR SQL_CURSOR IS
+459  	     SELECT
+460  		 sqlnumber,
+461  		 sql_text
+462  	     FROM select_statements
+463  	     ORDER by sqlnumber;
+464  	 SQL_REC SQL_CURSOR%ROWTYPE;
+465  	 row_cnt number;
+466  
+467  begin
+468  
+469  	 OPEN SQL_CURSOR;
+470  	 LOOP
+471  	     FETCH SQL_CURSOR INTO SQL_REC;
+472  	     EXIT WHEN SQL_CURSOR%NOTFOUND;
+473  
+474  	     select count(*) into row_cnt
+475  	     from test_results t1,test_results t2
+476  	     where
+477  	     t1.explain_plan_hash <> t2.explain_plan_hash and
+478  	     t1.test_name=v_test_name and
+479  	     t2.test_name=compared_to_test_name and
+480  	     t1.sqlnumber=SQL_REC.sqlnumber and
+481  	     t1.sqlnumber=t2.sqlnumber;
+482  
+483  	     if row_cnt > 0 then
+484  
+485  	       begin
+486  		 runselect(v_test_name,
+487  			SQL_REC.sqlnumber,
+488  			SQL_REC.sql_text);
+489  
+490  		 DBMS_OUTPUT.put_line('Executed SQL number '||SQL_REC.sqlnumber);
+491  
+492  	       EXCEPTION
+493  		 WHEN others THEN
+494  		   DBMS_OUTPUT.put_line('Error on SQL number '||SQL_REC.sqlnumber);
+495  		   DBMS_OUTPUT.put_line(SQLERRM);
+496  		   update_error(v_test_name,SQL_REC.sqlnumber,SQLERRM);
+497  	       end;
+498  	       commit;
+499  
+500  	     end if;
+501  	  END LOOP;
+502  	 CLOSE SQL_CURSOR;
+503  
+504  end execute_diff_plans;
+505  
+506  procedure display_results(
+507  	v_test_name in varchar2,
+508  	compared_to_test_name in varchar2)
+509   is
+510  	 CURSOR RSLT_CURSOR(TEST1 varchar2,TEST2 varchar2) IS
+511  	    select
+512  	    t1.SQLNUMBER,
+513  	    t1.SQL_ID,
+514  	    t1.EXPLAIN_PLAN_HASH T1_EXPLAIN_PLAN_HASH,
+515  	    t1.EXECUTE_PLAN_HASH T1_EXECUTE_PLAN_HASH,
+516  	    t2.EXPLAIN_PLAN_HASH T2_EXPLAIN_PLAN_HASH,
+517  	    t2.EXECUTE_PLAN_HASH T2_EXECUTE_PLAN_HASH,
+518  	    t1.ELAPSED_IN_SECONDS T1_ELAPSED_IN_SECONDS,
+519  	    t2.ELAPSED_IN_SECONDS T2_ELAPSED_IN_SECONDS
+520  	    from
+521  	    test_results t1,
+522  	    test_results t2
+523  	    where
+524  	    t1.SQLNUMBER=t2.SQLNUMBER and
+525  	    t1.TEST_NAME=TEST1 and
+526  	    t2.TEST_NAME=TEST2 and
+527  	    (t1.ELAPSED_IN_SECONDS*3) < t2.ELAPSED_IN_SECONDS and
+528  	    t1.ELAPSED_IN_SECONDS is not null and
+529  	    t2.ELAPSED_IN_SECONDS is not null
+530  	    order by sqlnumber;
+531  
+532  	 RSLT_REC RSLT_CURSOR%ROWTYPE;
+533  
+534  	 row_cnt number;
+535  
+536  	 t1_elapsed number;
+537  	 t1_count number;
+538  	 t1_average number;
+539  
+540  	 t2_elapsed number;
+541  	 t2_count number;
+542  	 t2_average number;
+543  
+544  begin
+545  
+546  -- output selects where test1 3 times better than test2
+547  
+548  	 DBMS_OUTPUT.PUT_LINE(CHR(9));
+549  	 DBMS_OUTPUT.PUT_LINE('Select statements that ran 3 times faster with '||
+550  	     v_test_name||' than with '||compared_to_test_name||'.');
+551  	 DBMS_OUTPUT.PUT_LINE(CHR(9));
+552  	 DBMS_OUTPUT.PUT_LINE('T1='||v_test_name);
+553  	 DBMS_OUTPUT.PUT_LINE('T2='||compared_to_test_name);
+554  	 DBMS_OUTPUT.PUT_LINE(CHR(9));
+555  
+556  	 DBMS_OUTPUT.PUT_LINE(CHR(9)||'SQLNUMBER T1_EXECUTE_PLAN_HASH T2_EXECUTE_PLAN_HASH T1_ELAPSED_IN_SECONDS T2_ELAPSED_IN_SECONDS');
+557  	 DBMS_OUTPUT.PUT_LINE(CHR(9)||'--------- -------------------- -------------------- --------------------- ---------------------');
+558  
+559  	 row_cnt := 0;
+560  
+561  	 OPEN RSLT_CURSOR(v_test_name,compared_to_test_name);
+562  	 LOOP
+563  	     FETCH RSLT_CURSOR INTO RSLT_REC;
+564  	     EXIT WHEN RSLT_CURSOR%NOTFOUND;
+565  	     row_cnt := row_cnt + 1;
+566  	     DBMS_OUTPUT.PUT_LINE(CHR(9)||
+567  	       lpad(to_char(RSLT_REC.SQLNUMBER),9)||' '||
+568  	       lpad(to_char(RSLT_REC.T1_EXECUTE_PLAN_HASH),20)||' '||
+569  	       lpad(to_char(RSLT_REC.T2_EXECUTE_PLAN_HASH),20)||' '||
+570  	       lpad(TO_CHAR(trunc(RSLT_REC.T1_ELAPSED_IN_SECONDS)),21)||' '||
+571  	       lpad(TO_CHAR(trunc(RSLT_REC.T2_ELAPSED_IN_SECONDS)),21));
+572  	  END LOOP;
+573  	 CLOSE RSLT_CURSOR;
+574  	 DBMS_OUTPUT.PUT_LINE(CHR(9));
+575  	 DBMS_OUTPUT.PUT_LINE('Number of selects='||to_char(row_cnt));
+576  
+577  -- output selects where test2 3 times better than test1
+578  
+579  	 DBMS_OUTPUT.PUT_LINE(CHR(9));
+580  	 DBMS_OUTPUT.PUT_LINE('Select statements that ran 3 times faster with '||
+581  	     compared_to_test_name||' than with '||v_test_name||'.');
+582  	 DBMS_OUTPUT.PUT_LINE(CHR(9));
+583  	 DBMS_OUTPUT.PUT_LINE('T1='||compared_to_test_name);
+584  	 DBMS_OUTPUT.PUT_LINE('T2='||v_test_name);
+585  	 DBMS_OUTPUT.PUT_LINE(CHR(9));
+586  
+587  	 DBMS_OUTPUT.PUT_LINE(CHR(9)||'SQLNUMBER T1_EXECUTE_PLAN_HASH T2_EXECUTE_PLAN_HASH T1_ELAPSED_IN_SECONDS T2_ELAPSED_IN_SECONDS');
+588  	 DBMS_OUTPUT.PUT_LINE(CHR(9)||'--------- -------------------- -------------------- --------------------- ---------------------');
+589  
+590  	 row_cnt := 0;
+591  
+592  	 OPEN RSLT_CURSOR(compared_to_test_name,v_test_name);
+593  	 LOOP
+594  	     FETCH RSLT_CURSOR INTO RSLT_REC;
+595  	     EXIT WHEN RSLT_CURSOR%NOTFOUND;
+596  	     row_cnt := row_cnt + 1;
+597  	     DBMS_OUTPUT.PUT_LINE(CHR(9)||
+598  	       lpad(to_char(RSLT_REC.SQLNUMBER),9)||' '||
+599  	       lpad(to_char(RSLT_REC.T1_EXECUTE_PLAN_HASH),20)||' '||
+600  	       lpad(to_char(RSLT_REC.T2_EXECUTE_PLAN_HASH),20)||' '||
+601  	       lpad(TO_CHAR(trunc(RSLT_REC.T1_ELAPSED_IN_SECONDS)),21)||' '||
+602  	       lpad(TO_CHAR(trunc(RSLT_REC.T2_ELAPSED_IN_SECONDS)),21));
+603  	  END LOOP;
+604  	 CLOSE RSLT_CURSOR;
+605  	 DBMS_OUTPUT.PUT_LINE(CHR(9));
+606  	 DBMS_OUTPUT.PUT_LINE('Number of selects='||to_char(row_cnt));
+607  
+608  	 -- summary results for test 1
+609  
+610  	 select
+611  	 sum(ELAPSED_IN_SECONDS),
+612  	 count(*),
+613  	 sum(ELAPSED_IN_SECONDS)/count(*)
+614  	 into
+615  	 t1_elapsed,
+616  	 t1_count,
+617  	 t1_average
+618  	 from
+619  	 test_results
+620  	 where
+621  	 TEST_NAME=v_test_name and
+622  	 EXECUTE_PLAN_HASH is not null;
+623  
+624  	 -- summary results for test 1
+625  
+626  	 select
+627  	 sum(ELAPSED_IN_SECONDS),
+628  	 count(*),
+629  	 sum(ELAPSED_IN_SECONDS)/count(*)
+630  	 into
+631  	 t2_elapsed,
+632  	 t2_count,
+633  	 t2_average
+634  	 from
+635  	 test_results
+636  	 where
+637  	 TEST_NAME=compared_to_test_name and
+638  	 EXECUTE_PLAN_HASH is not null;
+639  
+640  	 DBMS_OUTPUT.PUT_LINE(CHR(9));
+641  	 DBMS_OUTPUT.PUT_LINE('Summary of test results');
+642  	 DBMS_OUTPUT.PUT_LINE(CHR(9));
+643  	 DBMS_OUTPUT.PUT_LINE(CHR(9)||' 	  TEST_NAME TOTAL_ELAPSED_IN_SECONDS SELECTS_EXECUTED AVERAGE_ELAPSED_IN_SECONDS');
+644  	 DBMS_OUTPUT.PUT_LINE(CHR(9)||'-------------------- ------------------------ ---------------- --------------------------');
+645  
+646  	 DBMS_OUTPUT.PUT_LINE(CHR(9)||
+647  	    lpad(v_test_name,20)||' '||
+648  	    lpad(to_char(t1_elapsed),24)||' '||
+649  	    lpad(to_char(t1_count),16)||' '||
+650  	    lpad(TO_CHAR(trunc(t1_average)),26));
+651  
+652  	 DBMS_OUTPUT.PUT_LINE(CHR(9)||
+653  	    lpad(compared_to_test_name,20)||' '||
+654  	    lpad(to_char(t2_elapsed),24)||' '||
+655  	    lpad(to_char(t2_count),16)||' '||
+656  	    lpad(TO_CHAR(trunc(t2_average)),26));
+657  
+658  end display_results;
+659  
+660  function show_explained_plan(
+661  	v_test_name in varchar2,
+662  	sqlnumber in number) return CLOB
+663  is
+664  begin
+665  
+666  return dbms_xplan.display_plan('PLAN_TABLE',v_test_name||to_char(sqlnumber),'ALL');
+667  
+668  end show_explained_plan;
+669  
+670  procedure reexecute_errored(
+671  v_test_name in varchar2)
+672   is
+673  	 CURSOR SQL_CURSOR IS
+674  	     SELECT
+675  		 s.sqlnumber,
+676  		 s.sql_text
+677  	     FROM
+678  		 select_statements s,
+679  		 test_results t
+680  	     WHERE
+681  		 s.sqlnumber=t.sqlnumber and
+682  		 t.error_message is not null and
+683  		 t.test_name = v_test_name
+684  	     ORDER by sqlnumber;
+685  	 SQL_REC SQL_CURSOR%ROWTYPE;
+686  
+687  begin
+688  
+689  	 OPEN SQL_CURSOR;
+690  	 LOOP
+691  	     FETCH SQL_CURSOR INTO SQL_REC;
+692  	     EXIT WHEN SQL_CURSOR%NOTFOUND;
+693  
+694  	     update test_results t
+695  	     set t.error_message=NULL
+696  	     where
+697  	     t.sqlnumber=SQL_REC.sqlnumber and
+698  	     t.test_name=v_test_name;
+699  
+700  	     commit;
+701  
+702  	     begin
+703  	       runselect(v_test_name,
+704  		      SQL_REC.sqlnumber,
+705  		      SQL_REC.sql_text);
+706  
+707  	       DBMS_OUTPUT.put_line('Executed SQL number '||SQL_REC.sqlnumber);
+708  
+709  	     EXCEPTION
+710  	       WHEN others THEN
+711  		 DBMS_OUTPUT.put_line('Error on SQL number '||SQL_REC.sqlnumber);
+712  		 DBMS_OUTPUT.put_line(SQLERRM);
+713  		 update_error(v_test_name,SQL_REC.sqlnumber,SQLERRM);
+714  	     end;
+715  	     commit;
+716  	  END LOOP;
+717  	 CLOSE SQL_CURSOR;
+718  
+719  end reexecute_errored;
+720  
+721  procedure show_executed_plan(
+722  	v_test_name in varchar2,
+723  	v_sqlnumber in number)
+724  is
+725  	 CURSOR SQL_CURSOR IS
+726  	   select
+727  	   SQL_ID,
+728  	   EXECUTE_PLAN_HASH
+729  	   from
+730  	   test_results
+731  	   where
+732  	   sqlnumber=v_sqlnumber and
+733  	   TEST_NAME=v_test_name;
+734  	 SQL_REC SQL_CURSOR%ROWTYPE;
+735  
+736  	 CURSOR SQL_CURSOR2(p_sql_id varchar2,p_plan_hash number)
+737  	   IS
+738  	   select PLAN_TABLE_OUTPUT from
+739  	      table(DBMS_XPLAN.DISPLAY_AWR(p_sql_id,
+740  	      p_plan_hash,
+741  	      NULL,
+742  	      'ALL'));
+743  	 SQL_REC2 SQL_CURSOR2%ROWTYPE;
+744  
+745  begin
+746  
+747  	 OPEN SQL_CURSOR;
+748  	 LOOP
+749  	     FETCH SQL_CURSOR INTO SQL_REC;
+750  	     EXIT WHEN SQL_CURSOR%NOTFOUND;
+751  
+752  	     OPEN SQL_CURSOR2(SQL_REC.SQL_ID,SQL_REC.EXECUTE_PLAN_HASH);
+753  
+754  	     LOOP
+755  		FETCH SQL_CURSOR2 INTO SQL_REC2;
+756  		EXIT WHEN SQL_CURSOR2%NOTFOUND;
+757  
+758  		DBMS_OUTPUT.put_line(SQL_REC2.PLAN_TABLE_OUTPUT);
+759  	     END LOOP;
+760  
+761  	  END LOOP;
+762  	 CLOSE SQL_CURSOR;
+763  
+764  end show_executed_plan;
+765  
+766  end TEST_SELECT;
+767  /
+
+Package body created.
+
+SQL> show errors
+No errors.
+SQL> 
+SQL> begin
+  2  
+  3  TEST_SELECT.collect_select_statements(
+  4     max_number_selects=>100,
+  5     include_pattern1=> '%produser.test_table%');
+  6  
+  7  end;
+  8  /
+
+PL/SQL procedure successfully completed.
+
+SQL> 
+SQL> select * from select_statements order by sqlnumber;
+
+ SQLNUMBER SQL_TEXT
+---------- ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+         1 select blocks from produser.test_table where owner='SYS' and table_name='DUAL'
+         2 select sum(blocks) from produser.test_table
+
+SQL> 
+SQL> connect testuser/testuser
+Connected.
+SQL> 
+SQL> -- install package
+SQL> 
+SQL> drop table plan_table;
+drop table plan_table
+           *
+ERROR at line 1:
+ORA-00942: table or view does not exist
+
+
+SQL> 
+SQL> @$ORACLE_HOME/rdbms/admin/utlxplan.sql
+SQL> rem
+SQL> rem $Header: utlxplan.sql 08-may-2004.12:53:19 bdagevil Exp $ xplainpl.sql
+SQL> rem
+SQL> Rem Copyright (c) 1988, 2004, Oracle. All rights reserved.
+SQL> Rem NAME
+SQL> REM    UTLXPLAN.SQL
+SQL> Rem  FUNCTION
+SQL> Rem  NOTES
+SQL> Rem  MODIFIED
+SQL> Rem     bdagevil	05/08/04  - add other_xml column
+SQL> Rem     bdagevil	06/18/03  - rename hint alias to object_alias
+SQL> Rem     ddas	06/03/03  - increase size of hint alias column
+SQL> Rem     bdagevil	02/13/03  - add plan_id and depth column
+SQL> Rem     ddas	01/17/03  - add query_block and hint_alias columns
+SQL> Rem     ddas	11/04/02  - revert timestamp column to DATE (PL/SQL problem)
+SQL> Rem     ddas	10/28/02  - change type of timestamp column to TIMESTAMP
+SQL> Rem     ddas	10/03/02  - add estimated_time column
+SQL> Rem     mzait	04/16/02  - add row vector to the plan table
+SQL> Rem     mzait	10/26/01  - add keys and filter predicates to the plan table
+SQL> Rem     ddas	05/05/00  - increase length of options column
+SQL> Rem     ddas	04/17/00  - add CPU, I/O cost, temp_space columns
+SQL> Rem     mzait	02/19/98 -  add distribution method column
+SQL> Rem     ddas	05/17/96 -  change search_columns to number
+SQL> Rem     achaudhr	07/23/95 -  PTI: Add columns partition_{start, stop, id}
+SQL> Rem     glumpkin	08/25/94 -  new optimizer fields
+SQL> Rem     jcohen	11/05/93 -  merge changes from branch 1.1.710.1 - 9/24
+SQL> Rem     jcohen	09/24/93 -  #163783 add optimizer column
+SQL> Rem     glumpkin	10/25/92 -  Renamed from XPLAINPL.SQL
+SQL> Rem     jcohen	05/22/92 -  #79645 - set node width to 128 (M_XDBI in gendef)
+SQL> Rem     rlim	04/29/91 -  change char to varchar2
+SQL> Rem     Peeler	10/19/88 - Creation
+SQL> Rem
+SQL> Rem This is the format for the table that is used by the EXPLAIN PLAN
+SQL> Rem statement.  The explain statement requires the presence of this
+SQL> Rem table in order to store the descriptions of the row sources.
+SQL> 
+SQL> create table PLAN_TABLE (
+  2  	     statement_id	varchar2(30),
+  3  	     plan_id		number,
+  4  	     timestamp		date,
+  5  	     remarks		varchar2(4000),
+  6  	     operation		varchar2(30),
+  7  	     options		varchar2(255),
+  8  	     object_node	varchar2(128),
+  9  	     object_owner	varchar2(30),
+ 10  	     object_name	varchar2(30),
+ 11  	     object_alias	varchar2(65),
+ 12  	     object_instance	numeric,
+ 13  	     object_type	varchar2(30),
+ 14  	     optimizer		varchar2(255),
+ 15  	     search_columns	number,
+ 16  	     id 		numeric,
+ 17  	     parent_id		numeric,
+ 18  	     depth		numeric,
+ 19  	     position		numeric,
+ 20  	     cost		numeric,
+ 21  	     cardinality	numeric,
+ 22  	     bytes		numeric,
+ 23  	     other_tag		varchar2(255),
+ 24  	     partition_start	varchar2(255),
+ 25  	     partition_stop	varchar2(255),
+ 26  	     partition_id	numeric,
+ 27  	     other		long,
+ 28  	     distribution	varchar2(30),
+ 29  	     cpu_cost		numeric,
+ 30  	     io_cost		numeric,
+ 31  	     temp_space 	numeric,
+ 32  	     access_predicates	varchar2(4000),
+ 33  	     filter_predicates	varchar2(4000),
+ 34  	     projection 	varchar2(4000),
+ 35  	     time		numeric,
+ 36  	     qblock_name	varchar2(30),
+ 37  	     other_xml		clob
+ 38  );
+
+Table created.
+
+SQL> 
+SQL> @tables.sql
+SQL> drop table select_statements;
+drop table select_statements
+           *
+ERROR at line 1:
+ORA-00942: table or view does not exist
+
+
+SQL> 
+SQL> create table select_statements
+  2  (sqlnumber number,
+  3  sql_text clob);
+
+Table created.
+
+SQL> 
+SQL> create unique index select_statements_i1 on select_statements(sqlnumber);
+
+Index created.
+
+SQL> 
+SQL> drop table test_results;
+drop table test_results
+           *
+ERROR at line 1:
+ORA-00942: table or view does not exist
+
+
+SQL> 
+SQL> create table test_results
+  2  (test_name varchar2(2000),
+  3  sqlnumber number,
+  4  sql_id VARCHAR2(13),
+  5  explain_plan_hash number,
+  6  execute_plan_hash number,
+  7  rows_fetched number,
+  8  elapsed_in_seconds number,
+  9  CPU_used_by_this_session number,
+ 10  consistent_gets number,
+ 11  db_block_gets number,
+ 12  parse_time_elapsed number,
+ 13  physical_reads number,
+ 14  error_message varchar2(64));
+
+Table created.
+
+SQL> 
+SQL> create unique index test_results_i1 on test_results(test_name,sqlnumber);
+
+Index created.
+
+SQL> create index test_results_i2 on test_results(sqlnumber);
+
+Index created.
+
+SQL> @package.sql
+SQL> CREATE OR REPLACE PACKAGE TEST_SELECT AS
+  2  
+  3  /*
+  4  
+  5  collect_select_statements(max_number_selects,
+  6  include_pattern1,...,include_pattern10,
+  7  exclude_pattern1,...,exclude_pattern10) - This proc is run on the
+  8  the source database to collect select statements including statements that have
+  9  the include patterns and excluding those whohave the exclude patterns.
+ 10  Patterns use LIKE conditions %x%.
+ 11  
+ 12  */
+ 13  
+ 14  procedure collect_select_statements(
+ 15  	max_number_selects in number,
+ 16  	include_pattern1 in varchar2 := '%%',
+ 17  	include_pattern2 in varchar2 := '%%',
+ 18  	include_pattern3 in varchar2 := '%%',
+ 19  	include_pattern4 in varchar2 := '%%',
+ 20  	include_pattern5 in varchar2 := '%%',
+ 21  	include_pattern6 in varchar2 := '%%',
+ 22  	include_pattern7 in varchar2 := '%%',
+ 23  	include_pattern8 in varchar2 := '%%',
+ 24  	include_pattern9 in varchar2 := '%%',
+ 25  	include_pattern10 in varchar2 := '%%',
+ 26  	exclude_pattern1 in varchar2 := ' ',
+ 27  	exclude_pattern2 in varchar2 := ' ',
+ 28  	exclude_pattern3 in varchar2 := ' ',
+ 29  	exclude_pattern4 in varchar2 := ' ',
+ 30  	exclude_pattern5 in varchar2 := ' ',
+ 31  	exclude_pattern6 in varchar2 := ' ',
+ 32  	exclude_pattern7 in varchar2 := ' ',
+ 33  	exclude_pattern8 in varchar2 := ' ',
+ 34  	exclude_pattern9 in varchar2 := ' ',
+ 35  	exclude_pattern10 in varchar2 := ' ');
+ 36  
+ 37  /*
+ 38  
+ 39  copy_select_statements(link_name)
+ 40  copies select statements from remote source database
+ 41  pointed to by link_name's db link.
+ 42  
+ 43  */
+ 44  
+ 45  procedure copy_select_statements(
+ 46  	link_name in varchar2);
+ 47  
+ 48  /*
+ 49  
+ 50  update_select_statements(from_text,to_text) - updates select statement text.
+ 51  Used to change table names and schema names.  I.e. from prodschema.prodtablename
+ 52  to testschema.testtablename.
+ 53  
+ 54  */
+ 55  
+ 56  procedure update_select_statements(
+ 57  	from_text in varchar2,
+ 58  	to_text in varchar2);
+ 59  
+ 60  /*
+ 61  
+ 62  get_explain_plans(test_name) - runs explain plan against every select recording the
+ 63  current test name.  I.e. get_explain_plans('production stats').  Plans are stored in
+ 64  plan_table by sqlnumber.
+ 65  
+ 66  */
+ 67  
+ 68  procedure get_explain_plans(
+ 69  	test_name in varchar2);
+ 70  
+ 71  /*
+ 72  
+ 73  execute_all(test_name) - execute every query for the current test scenario.
+ 74  
+ 75  */
+ 76  
+ 77  procedure execute_all(
+ 78  	test_name in varchar2);
+ 79  
+ 80  /*
+ 81  
+ 82  execute_diff_plans(test_name,compared_to_test_name) - execute only the queries
+ 83  whose plan under the current test_name differ from previous test name
+ 84  compared_to_test_name.  So, if test_name is "Production stats" and
+ 85  compared_to_test_name is "Empty stats" then we assume you have run get_explain_plans
+ 86  for both "Production stats" and "Empty stats" and only run the sqls whose plans
+ 87  are different in the two scenarios.
+ 88  
+ 89  */
+ 90  
+ 91  procedure execute_diff_plans(
+ 92  	v_test_name in varchar2,
+ 93  	compared_to_test_name in varchar2);
+ 94  
+ 95  /*
+ 96  
+ 97  display_results(test_name,compared_to_test_name) - output results of testings in the
+ 98  two scenarios.  List results from all queries that ran more than 3 times as long
+ 99  with one test or the other.  Also summarize results with total elapsed time,
+100  number of queries executed, average elapsed time, and percent improvement.
+101  
+102  */
+103  
+104  procedure display_results(
+105  	v_test_name in varchar2,
+106  	compared_to_test_name in varchar2);
+107  
+108  /*
+109  
+110  show_explained_plan(test_name,sqlnumber) - extract plan from plan_table for given test name
+111  and sql statement.
+112  
+113  */
+114  
+115  function show_explained_plan(
+116  	v_test_name in varchar2,
+117  	sqlnumber in number) return CLOB;
+118  
+119  /*
+120  
+121  reexecute_errored(v_test_name) - re-execute every query for the current test scenario
+122  that had an error.
+123  
+124  */
+125  
+126  procedure reexecute_errored(
+127  	v_test_name in varchar2);
+128  
+129  /*
+130  
+131  show_executed_plan(test_name,sqlnumber) - extract plan from plan_table for given test name
+132  and sql statement.
+133  
+134  */
+135  
+136  procedure show_executed_plan(
+137  	v_test_name in varchar2,
+138  	v_sqlnumber in number);
+139  
+140  END;
+141  /
+
+Package created.
+
+SQL> show errors
+No errors.
+SQL> 
+SQL> CREATE OR REPLACE PACKAGE BODY TEST_SELECT
+  2  AS
+  3  
+  4  procedure collect_select_statements(
+  5  	max_number_selects in number,
+  6  	include_pattern1 in varchar2 := '%%',
+  7  	include_pattern2 in varchar2 := '%%',
+  8  	include_pattern3 in varchar2 := '%%',
+  9  	include_pattern4 in varchar2 := '%%',
+ 10  	include_pattern5 in varchar2 := '%%',
+ 11  	include_pattern6 in varchar2 := '%%',
+ 12  	include_pattern7 in varchar2 := '%%',
+ 13  	include_pattern8 in varchar2 := '%%',
+ 14  	include_pattern9 in varchar2 := '%%',
+ 15  	include_pattern10 in varchar2 := '%%',
+ 16  	exclude_pattern1 in varchar2 := ' ',
+ 17  	exclude_pattern2 in varchar2 := ' ',
+ 18  	exclude_pattern3 in varchar2 := ' ',
+ 19  	exclude_pattern4 in varchar2 := ' ',
+ 20  	exclude_pattern5 in varchar2 := ' ',
+ 21  	exclude_pattern6 in varchar2 := ' ',
+ 22  	exclude_pattern7 in varchar2 := ' ',
+ 23  	exclude_pattern8 in varchar2 := ' ',
+ 24  	exclude_pattern9 in varchar2 := ' ',
+ 25  	exclude_pattern10 in varchar2 := ' ')
+ 26   is
+ 27  	 CURSOR SQL_CURSOR IS
+ 28  	     SELECT DISTINCT
+ 29  		 SQL_ID,
+ 30  		 DBID
+ 31  	     FROM DBA_HIST_SQLSTAT;
+ 32  	 SQL_REC SQL_CURSOR%ROWTYPE;
+ 33  	 CURSOR TEXT_CURSOR(SQL_ID_ARGUMENT VARCHAR2,DBID_ARGUMENT NUMBER) IS
+ 34  	     SELECT
+ 35  		 SQL_TEXT
+ 36  	     FROM DBA_HIST_SQLTEXT
+ 37  	     WHERE
+ 38  		 SQL_TEXT like include_pattern1 and
+ 39  		 SQL_TEXT like include_pattern2 and
+ 40  		 SQL_TEXT like include_pattern3 and
+ 41  		 SQL_TEXT like include_pattern4 and
+ 42  		 SQL_TEXT like include_pattern5 and
+ 43  		 SQL_TEXT like include_pattern6 and
+ 44  		 SQL_TEXT like include_pattern7 and
+ 45  		 SQL_TEXT like include_pattern8 and
+ 46  		 SQL_TEXT like include_pattern9 and
+ 47  		 SQL_TEXT like include_pattern10 and
+ 48  		 SQL_TEXT not like exclude_pattern1 and
+ 49  		 SQL_TEXT not like exclude_pattern2 and
+ 50  		 SQL_TEXT not like exclude_pattern3 and
+ 51  		 SQL_TEXT not like exclude_pattern4 and
+ 52  		 SQL_TEXT not like exclude_pattern5 and
+ 53  		 SQL_TEXT not like exclude_pattern6 and
+ 54  		 SQL_TEXT not like exclude_pattern7 and
+ 55  		 SQL_TEXT not like exclude_pattern8 and
+ 56  		 SQL_TEXT not like exclude_pattern9 and
+ 57  		 SQL_TEXT not like exclude_pattern10 and
+ 58  		 (upper(SQL_TEXT) like 'SELECT%' or
+ 59  		  upper(SQL_TEXT) like 'WITH%') and
+ 60  		 SQL_ID = SQL_ID_ARGUMENT and
+ 61  		 DBID = DBID_ARGUMENT;
+ 62  	 TEXT_REC TEXT_CURSOR%ROWTYPE;
+ 63  	 sqlnumber number;
+ 64  	 tempclob clob;
+ 65  	 next_sqlnumber number;
+ 66  begin
+ 67  -- get next sql number based on number of queries already collected
+ 68  	 select count(*)+1 into next_sqlnumber from select_statements;
+ 69  	 sqlnumber := next_sqlnumber ;
+ 70  	 OPEN SQL_CURSOR;
+ 71  	 LOOP
+ 72  	     FETCH SQL_CURSOR INTO SQL_REC;
+ 73  	     EXIT WHEN SQL_CURSOR%NOTFOUND;
+ 74  
+ 75  	     OPEN TEXT_CURSOR(SQL_REC.SQL_ID,SQL_REC.DBID);
+ 76  	     LOOP
+ 77  		 FETCH TEXT_CURSOR INTO TEXT_REC;
+ 78  		 EXIT WHEN TEXT_CURSOR%NOTFOUND;
+ 79  		 insert into select_statements values (sqlnumber,TEXT_REC.SQL_TEXT);
+ 80  		 commit;
+ 81  		 sqlnumber := sqlnumber + 1;
+ 82  	      END LOOP;
+ 83  	     CLOSE TEXT_CURSOR;
+ 84  	     EXIT WHEN sqlnumber >= (max_number_selects+next_sqlnumber);
+ 85  	  END LOOP;
+ 86  	 CLOSE SQL_CURSOR;
+ 87  end collect_select_statements;
+ 88  
+ 89  procedure copy_select_statements(
+ 90  	link_name in varchar2)
+ 91  is
+ 92  begin
+ 93    execute immediate 'truncate table select_statements';
+ 94    execute immediate 'insert into select_statements select * from '||
+ 95  	 'select_statements@'||link_name;
+ 96    commit;
+ 97  end copy_select_statements;
+ 98  
+ 99  procedure update_error(
+100  v_test_name in varchar2,
+101  v_sqlnumber in number,
+102  v_sqlerrm in varchar2)
+103  is
+104  row_cnt number;
+105  trimmed_errm varchar2(64);
+106  begin
+107  
+108    trimmed_errm := substr(v_sqlerrm,1,64);
+109  
+110    select count(*) into row_cnt
+111    from test_results t
+112    where
+113    t.test_name=v_test_name and
+114    t.sqlnumber=v_sqlnumber;
+115  
+116    if row_cnt > 0 then
+117  	 update test_results t
+118  	 set
+119  	 error_message=trimmed_errm
+120  	 where
+121  	   t.test_name=v_test_name and
+122  	   t.sqlnumber=v_sqlnumber;
+123    else
+124  	 insert into test_results
+125  	 (test_name,sqlnumber,error_message)
+126  	 values (
+127  	   v_test_name,
+128  	   v_sqlnumber,
+129  	   trimmed_errm);
+130    end if;
+131    commit;
+132  
+133  end update_error;
+134  
+135  procedure update_select_statements(
+136  	from_text in varchar2,
+137  	to_text in varchar2)
+138   is
+139  begin
+140  
+141  update select_statements
+142  set SQL_TEXT = replace(SQL_TEXT,from_text,to_text);
+143  
+144  commit;
+145  
+146  end update_select_statements;
+147  
+148  procedure update_explain_plan_hash(
+149  v_test_name in varchar2,
+150  v_sqlnumber in number)
+151   is
+152  	 planoutput clob;
+153  	 plan_hash_value number;
+154  	 row_cnt number;
+155  
+156  begin
+157  
+158    select t.PLAN_TABLE_OUTPUT
+159    into planoutput
+160    from table(dbms_xplan.display('PLAN_TABLE',v_test_name||to_char(v_sqlnumber),'BASIC')) t
+161    where t.plan_table_output like 'Plan%';
+162  
+163    plan_hash_value:=to_number(substr(planoutput,18));
+164  
+165    select count(*) into row_cnt
+166    from test_results t
+167    where
+168    t.test_name=v_test_name and
+169    t.sqlnumber=v_sqlnumber;
+170  
+171    if row_cnt > 0 then
+172  	 update test_results t
+173  	 set explain_plan_hash=plan_hash_value
+174  	 where
+175  	   t.test_name=v_test_name and
+176  	   t.sqlnumber=v_sqlnumber;
+177    else
+178  	 insert into test_results
+179  	 (test_name,sqlnumber,explain_plan_hash)
+180  	 values (
+181  	   v_test_name,
+182  	   v_sqlnumber,
+183  	   plan_hash_value);
+184    end if;
+185    commit;
+186  
+187  
+188  end update_explain_plan_hash;
+189  
+190  procedure get_explain_plans(
+191  test_name in varchar2)
+192   is
+193  	 CURSOR SQL_CURSOR IS
+194  	     SELECT
+195  		 sqlnumber,
+196  		 sql_text
+197  	     FROM select_statements
+198  	     ORDER by sqlnumber;
+199  	 SQL_REC SQL_CURSOR%ROWTYPE;
+200  	 clob_cursor INTEGER;
+201  	 sqlclob clob;
+202  	 ignored_value INTEGER;
+203  
+204  begin
+205  
+206  	 execute immediate 'delete from plan_table where statement_id like '''||test_name||'%''';
+207  
+208  	 commit;
+209  
+210  	 OPEN SQL_CURSOR;
+211  	 LOOP
+212  	     FETCH SQL_CURSOR INTO SQL_REC;
+213  	     EXIT WHEN SQL_CURSOR%NOTFOUND;
+214  
+215  	     sqlclob := 'explain plan set statement_id = '''||test_name||SQL_REC.sqlnumber||''' into plan_table for '||
+216  			SQL_REC.sql_text;
+217  
+218  	     begin
+219  	       clob_cursor := DBMS_SQL.OPEN_CURSOR;
+220  	       DBMS_SQL.PARSE (clob_cursor,sqlclob,DBMS_SQL.NATIVE);
+221  	       ignored_value := DBMS_SQL.EXECUTE(clob_cursor);
+222  	       DBMS_SQL.CLOSE_CURSOR (clob_cursor);
+223  
+224  	       update_explain_plan_hash(test_name,SQL_REC.sqlnumber);
+225  	       DBMS_OUTPUT.put_line('Plan explained for SQL number '||SQL_REC.sqlnumber);
+226  
+227  	     EXCEPTION
+228  	       WHEN others THEN
+229  		 DBMS_OUTPUT.put_line('Error on SQL number '||SQL_REC.sqlnumber);
+230  		 DBMS_OUTPUT.put_line(SQLERRM);
+231  		 update_error(test_name,SQL_REC.sqlnumber,SQLERRM);
+232  	     end;
+233  	     commit;
+234  	  END LOOP;
+235  	 CLOSE SQL_CURSOR;
+236  
+237  end get_explain_plans;
+238  
+239  procedure runselect(
+240  	    v_test_name in varchar2,
+241  	    v_sqlnumber in number,
+242  	    sqlclob  in clob) is
+243  	 clob_cursor INTEGER;
+244  	 rows_fetched INTEGER;
+245  	 before_date date;
+246  	 after_date date;
+247  	 total_rows_fetched NUMBER;
+248  	 elapsed_time_seconds NUMBER;
+249  	 row_cnt number;
+250  	 query_sql_id varchar2(13);
+251  	 planoutput clob;
+252  	 plan_hash_value number;
+253  	 cursor_child_no number;
+254  	 b_CPU_used_by_this_session number;
+255  	 b_consistent_gets number;
+256  	 b_db_block_gets number;
+257  	 b_parse_time_elapsed number;
+258  	 b_physical_reads number;
+259  	 a_CPU_used_by_this_session number;
+260  	 a_consistent_gets number;
+261  	 a_db_block_gets number;
+262  	 a_parse_time_elapsed number;
+263  	 a_physical_reads number;
+264  
+265  BEGIN
+266  	 select sysdate into before_date from dual;
+267  
+268  -- record current values of session statistics
+269  
+270  	 select
+271  	 s1.value CPU_used_by_this_session,
+272  	 s2.value consistent_gets,
+273  	 s3.value db_block_gets,
+274  	 s4.value parse_time_elapsed,
+275  	 s5.value physical_reads
+276  	 into
+277  	 b_CPU_used_by_this_session,
+278  	 b_consistent_gets,
+279  	 b_db_block_gets,
+280  	 b_parse_time_elapsed,
+281  	 b_physical_reads
+282  	 from
+283  	 v$mystat s1,
+284  	 v$mystat s2,
+285  	 v$mystat s3,
+286  	 v$mystat s4,
+287  	 v$mystat s5,
+288  	 V$STATNAME n1,
+289  	 V$STATNAME n2,
+290  	 V$STATNAME n3,
+291  	 V$STATNAME n4,
+292  	 V$STATNAME n5
+293  	 where
+294  	 s1.STATISTIC#=n1.STATISTIC# and
+295  	 n1.name = 'CPU used by this session' and
+296  	 s2.STATISTIC#=n2.STATISTIC# and
+297  	 n2.name = 'consistent gets' and
+298  	 s3.STATISTIC#=n3.STATISTIC# and
+299  	 n3.name = 'db block gets' and
+300  	 s4.STATISTIC#=n4.STATISTIC# and
+301  	 n4.name = 'parse time elapsed' and
+302  	 s5.STATISTIC#=n5.STATISTIC# and
+303  	 n5.name = 'physical reads';
+304  
+305  	 clob_cursor := DBMS_SQL.OPEN_CURSOR;
+306  
+307  	 DBMS_SQL.PARSE (clob_cursor,sqlclob,DBMS_SQL.NATIVE);
+308  
+309  	 rows_fetched := DBMS_SQL.EXECUTE_AND_FETCH (clob_cursor);
+310  	 total_rows_fetched := rows_fetched;
+311  
+312  	 LOOP
+313  	     EXIT WHEN rows_fetched < 1;
+314  	     rows_fetched := DBMS_SQL.FETCH_ROWS (clob_cursor);
+315  	     total_rows_fetched := total_rows_fetched + rows_fetched;
+316  	 END LOOP;
+317  
+318  	 DBMS_SQL.CLOSE_CURSOR (clob_cursor);
+319  
+320  	 SELECT prev_sql_id,PREV_CHILD_NUMBER
+321  	 into query_sql_id,cursor_child_no
+322  	 from v$session
+323  	 where audsid=USERENV('SESSIONID');
+324  
+325  	 select t.PLAN_TABLE_OUTPUT
+326  	 into planoutput
+327  	 from table(dbms_xplan.display_cursor(query_sql_id,cursor_child_no,'BASIC')) t
+328  	 where t.plan_table_output like 'Plan%';
+329  
+330  	 plan_hash_value:=to_number(substr(planoutput,18));
+331  
+332  -- record current values of session statistics
+333  
+334  	 select
+335  	 s1.value CPU_used_by_this_session,
+336  	 s2.value consistent_gets,
+337  	 s3.value db_block_gets,
+338  	 s4.value parse_time_elapsed,
+339  	 s5.value physical_reads
+340  	 into
+341  	 a_CPU_used_by_this_session,
+342  	 a_consistent_gets,
+343  	 a_db_block_gets,
+344  	 a_parse_time_elapsed,
+345  	 a_physical_reads
+346  	 from
+347  	 v$mystat s1,
+348  	 v$mystat s2,
+349  	 v$mystat s3,
+350  	 v$mystat s4,
+351  	 v$mystat s5,
+352  	 V$STATNAME n1,
+353  	 V$STATNAME n2,
+354  	 V$STATNAME n3,
+355  	 V$STATNAME n4,
+356  	 V$STATNAME n5
+357  	 where
+358  	 s1.STATISTIC#=n1.STATISTIC# and
+359  	 n1.name = 'CPU used by this session' and
+360  	 s2.STATISTIC#=n2.STATISTIC# and
+361  	 n2.name = 'consistent gets' and
+362  	 s3.STATISTIC#=n3.STATISTIC# and
+363  	 n3.name = 'db block gets' and
+364  	 s4.STATISTIC#=n4.STATISTIC# and
+365  	 n4.name = 'parse time elapsed' and
+366  	 s5.STATISTIC#=n5.STATISTIC# and
+367  	 n5.name = 'physical reads';
+368  
+369  	 select sysdate into after_date from dual;
+370  
+371  	 elapsed_time_seconds := (after_date-before_date)*24*3600;
+372  
+373  	 select count(*) into row_cnt
+374  	 from test_results t
+375  	 where
+376  	 t.test_name=v_test_name and
+377  	 t.sqlnumber=v_sqlnumber;
+378  
+379  	 if row_cnt > 0 then
+380  	   update test_results t
+381  	   set
+382  	     rows_fetched=total_rows_fetched,
+383  	     elapsed_in_seconds=elapsed_time_seconds,
+384  	     sql_id=query_sql_id,
+385  	     execute_plan_hash=plan_hash_value,
+386  	     CPU_used_by_this_session=a_CPU_used_by_this_session-b_CPU_used_by_this_session,
+387  	     consistent_gets=a_consistent_gets-b_consistent_gets,
+388  	     db_block_gets=a_db_block_gets-b_db_block_gets,
+389  	     parse_time_elapsed=a_parse_time_elapsed-b_parse_time_elapsed,
+390  	     physical_reads=a_physical_reads-b_physical_reads
+391  	   where
+392  	     t.test_name=v_test_name and
+393  	     t.sqlnumber=v_sqlnumber;
+394  	 else
+395  	   insert into test_results
+396  	   (test_name,sqlnumber,rows_fetched,elapsed_in_seconds,sql_id,execute_plan_hash,
+397  	    CPU_used_by_this_session,consistent_gets,db_block_gets,parse_time_elapsed,
+398  	    physical_reads)
+399  	   values (
+400  	     v_test_name,
+401  	     v_sqlnumber,
+402  	     total_rows_fetched,
+403  	     elapsed_time_seconds,
+404  	     query_sql_id,
+405  	     plan_hash_value,
+406  	     a_CPU_used_by_this_session-b_CPU_used_by_this_session,
+407  	     a_consistent_gets-b_consistent_gets,
+408  	     a_db_block_gets-b_db_block_gets,
+409  	     a_parse_time_elapsed-b_parse_time_elapsed,
+410  	     a_physical_reads-b_physical_reads);
+411  	 end if;
+412  
+413  	 commit;
+414  
+415  END runselect;
+416  
+417  procedure execute_all(
+418  test_name in varchar2)
+419   is
+420  	 CURSOR SQL_CURSOR IS
+421  	     SELECT
+422  		 sqlnumber,
+423  		 sql_text
+424  	     FROM select_statements
+425  	     ORDER by sqlnumber;
+426  	 SQL_REC SQL_CURSOR%ROWTYPE;
+427  
+428  begin
+429  
+430  	 OPEN SQL_CURSOR;
+431  	 LOOP
+432  	     FETCH SQL_CURSOR INTO SQL_REC;
+433  	     EXIT WHEN SQL_CURSOR%NOTFOUND;
+434  
+435  	     begin
+436  	       runselect(test_name,
+437  		      SQL_REC.sqlnumber,
+438  		      SQL_REC.sql_text);
+439  
+440  	       DBMS_OUTPUT.put_line('Executed SQL number '||SQL_REC.sqlnumber);
+441  
+442  	     EXCEPTION
+443  	       WHEN others THEN
+444  		 DBMS_OUTPUT.put_line('Error on SQL number '||SQL_REC.sqlnumber);
+445  		 DBMS_OUTPUT.put_line(SQLERRM);
+446  		 update_error(test_name,SQL_REC.sqlnumber,SQLERRM);
+447  	     end;
+448  	     commit;
+449  	  END LOOP;
+450  	 CLOSE SQL_CURSOR;
+451  
+452  end execute_all;
+453  
+454  procedure execute_diff_plans(
+455  	v_test_name in varchar2,
+456  	compared_to_test_name in varchar2)
+457   is
+458  	 CURSOR SQL_CURSOR IS
+459  	     SELECT
+460  		 sqlnumber,
+461  		 sql_text
+462  	     FROM select_statements
+463  	     ORDER by sqlnumber;
+464  	 SQL_REC SQL_CURSOR%ROWTYPE;
+465  	 row_cnt number;
+466  
+467  begin
+468  
+469  	 OPEN SQL_CURSOR;
+470  	 LOOP
+471  	     FETCH SQL_CURSOR INTO SQL_REC;
+472  	     EXIT WHEN SQL_CURSOR%NOTFOUND;
+473  
+474  	     select count(*) into row_cnt
+475  	     from test_results t1,test_results t2
+476  	     where
+477  	     t1.explain_plan_hash <> t2.explain_plan_hash and
+478  	     t1.test_name=v_test_name and
+479  	     t2.test_name=compared_to_test_name and
+480  	     t1.sqlnumber=SQL_REC.sqlnumber and
+481  	     t1.sqlnumber=t2.sqlnumber;
+482  
+483  	     if row_cnt > 0 then
+484  
+485  	       begin
+486  		 runselect(v_test_name,
+487  			SQL_REC.sqlnumber,
+488  			SQL_REC.sql_text);
+489  
+490  		 DBMS_OUTPUT.put_line('Executed SQL number '||SQL_REC.sqlnumber);
+491  
+492  	       EXCEPTION
+493  		 WHEN others THEN
+494  		   DBMS_OUTPUT.put_line('Error on SQL number '||SQL_REC.sqlnumber);
+495  		   DBMS_OUTPUT.put_line(SQLERRM);
+496  		   update_error(v_test_name,SQL_REC.sqlnumber,SQLERRM);
+497  	       end;
+498  	       commit;
+499  
+500  	     end if;
+501  	  END LOOP;
+502  	 CLOSE SQL_CURSOR;
+503  
+504  end execute_diff_plans;
+505  
+506  procedure display_results(
+507  	v_test_name in varchar2,
+508  	compared_to_test_name in varchar2)
+509   is
+510  	 CURSOR RSLT_CURSOR(TEST1 varchar2,TEST2 varchar2) IS
+511  	    select
+512  	    t1.SQLNUMBER,
+513  	    t1.SQL_ID,
+514  	    t1.EXPLAIN_PLAN_HASH T1_EXPLAIN_PLAN_HASH,
+515  	    t1.EXECUTE_PLAN_HASH T1_EXECUTE_PLAN_HASH,
+516  	    t2.EXPLAIN_PLAN_HASH T2_EXPLAIN_PLAN_HASH,
+517  	    t2.EXECUTE_PLAN_HASH T2_EXECUTE_PLAN_HASH,
+518  	    t1.ELAPSED_IN_SECONDS T1_ELAPSED_IN_SECONDS,
+519  	    t2.ELAPSED_IN_SECONDS T2_ELAPSED_IN_SECONDS
+520  	    from
+521  	    test_results t1,
+522  	    test_results t2
+523  	    where
+524  	    t1.SQLNUMBER=t2.SQLNUMBER and
+525  	    t1.TEST_NAME=TEST1 and
+526  	    t2.TEST_NAME=TEST2 and
+527  	    (t1.ELAPSED_IN_SECONDS*3) < t2.ELAPSED_IN_SECONDS and
+528  	    t1.ELAPSED_IN_SECONDS is not null and
+529  	    t2.ELAPSED_IN_SECONDS is not null
+530  	    order by sqlnumber;
+531  
+532  	 RSLT_REC RSLT_CURSOR%ROWTYPE;
+533  
+534  	 row_cnt number;
+535  
+536  	 t1_elapsed number;
+537  	 t1_count number;
+538  	 t1_average number;
+539  
+540  	 t2_elapsed number;
+541  	 t2_count number;
+542  	 t2_average number;
+543  
+544  begin
+545  
+546  -- output selects where test1 3 times better than test2
+547  
+548  	 DBMS_OUTPUT.PUT_LINE(CHR(9));
+549  	 DBMS_OUTPUT.PUT_LINE('Select statements that ran 3 times faster with '||
+550  	     v_test_name||' than with '||compared_to_test_name||'.');
+551  	 DBMS_OUTPUT.PUT_LINE(CHR(9));
+552  	 DBMS_OUTPUT.PUT_LINE('T1='||v_test_name);
+553  	 DBMS_OUTPUT.PUT_LINE('T2='||compared_to_test_name);
+554  	 DBMS_OUTPUT.PUT_LINE(CHR(9));
+555  
+556  	 DBMS_OUTPUT.PUT_LINE(CHR(9)||'SQLNUMBER T1_EXECUTE_PLAN_HASH T2_EXECUTE_PLAN_HASH T1_ELAPSED_IN_SECONDS T2_ELAPSED_IN_SECONDS');
+557  	 DBMS_OUTPUT.PUT_LINE(CHR(9)||'--------- -------------------- -------------------- --------------------- ---------------------');
+558  
+559  	 row_cnt := 0;
+560  
+561  	 OPEN RSLT_CURSOR(v_test_name,compared_to_test_name);
+562  	 LOOP
+563  	     FETCH RSLT_CURSOR INTO RSLT_REC;
+564  	     EXIT WHEN RSLT_CURSOR%NOTFOUND;
+565  	     row_cnt := row_cnt + 1;
+566  	     DBMS_OUTPUT.PUT_LINE(CHR(9)||
+567  	       lpad(to_char(RSLT_REC.SQLNUMBER),9)||' '||
+568  	       lpad(to_char(RSLT_REC.T1_EXECUTE_PLAN_HASH),20)||' '||
+569  	       lpad(to_char(RSLT_REC.T2_EXECUTE_PLAN_HASH),20)||' '||
+570  	       lpad(TO_CHAR(trunc(RSLT_REC.T1_ELAPSED_IN_SECONDS)),21)||' '||
+571  	       lpad(TO_CHAR(trunc(RSLT_REC.T2_ELAPSED_IN_SECONDS)),21));
+572  	  END LOOP;
+573  	 CLOSE RSLT_CURSOR;
+574  	 DBMS_OUTPUT.PUT_LINE(CHR(9));
+575  	 DBMS_OUTPUT.PUT_LINE('Number of selects='||to_char(row_cnt));
+576  
+577  -- output selects where test2 3 times better than test1
+578  
+579  	 DBMS_OUTPUT.PUT_LINE(CHR(9));
+580  	 DBMS_OUTPUT.PUT_LINE('Select statements that ran 3 times faster with '||
+581  	     compared_to_test_name||' than with '||v_test_name||'.');
+582  	 DBMS_OUTPUT.PUT_LINE(CHR(9));
+583  	 DBMS_OUTPUT.PUT_LINE('T1='||compared_to_test_name);
+584  	 DBMS_OUTPUT.PUT_LINE('T2='||v_test_name);
+585  	 DBMS_OUTPUT.PUT_LINE(CHR(9));
+586  
+587  	 DBMS_OUTPUT.PUT_LINE(CHR(9)||'SQLNUMBER T1_EXECUTE_PLAN_HASH T2_EXECUTE_PLAN_HASH T1_ELAPSED_IN_SECONDS T2_ELAPSED_IN_SECONDS');
+588  	 DBMS_OUTPUT.PUT_LINE(CHR(9)||'--------- -------------------- -------------------- --------------------- ---------------------');
+589  
+590  	 row_cnt := 0;
+591  
+592  	 OPEN RSLT_CURSOR(compared_to_test_name,v_test_name);
+593  	 LOOP
+594  	     FETCH RSLT_CURSOR INTO RSLT_REC;
+595  	     EXIT WHEN RSLT_CURSOR%NOTFOUND;
+596  	     row_cnt := row_cnt + 1;
+597  	     DBMS_OUTPUT.PUT_LINE(CHR(9)||
+598  	       lpad(to_char(RSLT_REC.SQLNUMBER),9)||' '||
+599  	       lpad(to_char(RSLT_REC.T1_EXECUTE_PLAN_HASH),20)||' '||
+600  	       lpad(to_char(RSLT_REC.T2_EXECUTE_PLAN_HASH),20)||' '||
+601  	       lpad(TO_CHAR(trunc(RSLT_REC.T1_ELAPSED_IN_SECONDS)),21)||' '||
+602  	       lpad(TO_CHAR(trunc(RSLT_REC.T2_ELAPSED_IN_SECONDS)),21));
+603  	  END LOOP;
+604  	 CLOSE RSLT_CURSOR;
+605  	 DBMS_OUTPUT.PUT_LINE(CHR(9));
+606  	 DBMS_OUTPUT.PUT_LINE('Number of selects='||to_char(row_cnt));
+607  
+608  	 -- summary results for test 1
+609  
+610  	 select
+611  	 sum(ELAPSED_IN_SECONDS),
+612  	 count(*),
+613  	 sum(ELAPSED_IN_SECONDS)/count(*)
+614  	 into
+615  	 t1_elapsed,
+616  	 t1_count,
+617  	 t1_average
+618  	 from
+619  	 test_results
+620  	 where
+621  	 TEST_NAME=v_test_name and
+622  	 EXECUTE_PLAN_HASH is not null;
+623  
+624  	 -- summary results for test 1
+625  
+626  	 select
+627  	 sum(ELAPSED_IN_SECONDS),
+628  	 count(*),
+629  	 sum(ELAPSED_IN_SECONDS)/count(*)
+630  	 into
+631  	 t2_elapsed,
+632  	 t2_count,
+633  	 t2_average
+634  	 from
+635  	 test_results
+636  	 where
+637  	 TEST_NAME=compared_to_test_name and
+638  	 EXECUTE_PLAN_HASH is not null;
+639  
+640  	 DBMS_OUTPUT.PUT_LINE(CHR(9));
+641  	 DBMS_OUTPUT.PUT_LINE('Summary of test results');
+642  	 DBMS_OUTPUT.PUT_LINE(CHR(9));
+643  	 DBMS_OUTPUT.PUT_LINE(CHR(9)||' 	  TEST_NAME TOTAL_ELAPSED_IN_SECONDS SELECTS_EXECUTED AVERAGE_ELAPSED_IN_SECONDS');
+644  	 DBMS_OUTPUT.PUT_LINE(CHR(9)||'-------------------- ------------------------ ---------------- --------------------------');
+645  
+646  	 DBMS_OUTPUT.PUT_LINE(CHR(9)||
+647  	    lpad(v_test_name,20)||' '||
+648  	    lpad(to_char(t1_elapsed),24)||' '||
+649  	    lpad(to_char(t1_count),16)||' '||
+650  	    lpad(TO_CHAR(trunc(t1_average)),26));
+651  
+652  	 DBMS_OUTPUT.PUT_LINE(CHR(9)||
+653  	    lpad(compared_to_test_name,20)||' '||
+654  	    lpad(to_char(t2_elapsed),24)||' '||
+655  	    lpad(to_char(t2_count),16)||' '||
+656  	    lpad(TO_CHAR(trunc(t2_average)),26));
+657  
+658  end display_results;
+659  
+660  function show_explained_plan(
+661  	v_test_name in varchar2,
+662  	sqlnumber in number) return CLOB
+663  is
+664  begin
+665  
+666  return dbms_xplan.display_plan('PLAN_TABLE',v_test_name||to_char(sqlnumber),'ALL');
+667  
+668  end show_explained_plan;
+669  
+670  procedure reexecute_errored(
+671  v_test_name in varchar2)
+672   is
+673  	 CURSOR SQL_CURSOR IS
+674  	     SELECT
+675  		 s.sqlnumber,
+676  		 s.sql_text
+677  	     FROM
+678  		 select_statements s,
+679  		 test_results t
+680  	     WHERE
+681  		 s.sqlnumber=t.sqlnumber and
+682  		 t.error_message is not null and
+683  		 t.test_name = v_test_name
+684  	     ORDER by sqlnumber;
+685  	 SQL_REC SQL_CURSOR%ROWTYPE;
+686  
+687  begin
+688  
+689  	 OPEN SQL_CURSOR;
+690  	 LOOP
+691  	     FETCH SQL_CURSOR INTO SQL_REC;
+692  	     EXIT WHEN SQL_CURSOR%NOTFOUND;
+693  
+694  	     update test_results t
+695  	     set t.error_message=NULL
+696  	     where
+697  	     t.sqlnumber=SQL_REC.sqlnumber and
+698  	     t.test_name=v_test_name;
+699  
+700  	     commit;
+701  
+702  	     begin
+703  	       runselect(v_test_name,
+704  		      SQL_REC.sqlnumber,
+705  		      SQL_REC.sql_text);
+706  
+707  	       DBMS_OUTPUT.put_line('Executed SQL number '||SQL_REC.sqlnumber);
+708  
+709  	     EXCEPTION
+710  	       WHEN others THEN
+711  		 DBMS_OUTPUT.put_line('Error on SQL number '||SQL_REC.sqlnumber);
+712  		 DBMS_OUTPUT.put_line(SQLERRM);
+713  		 update_error(v_test_name,SQL_REC.sqlnumber,SQLERRM);
+714  	     end;
+715  	     commit;
+716  	  END LOOP;
+717  	 CLOSE SQL_CURSOR;
+718  
+719  end reexecute_errored;
+720  
+721  procedure show_executed_plan(
+722  	v_test_name in varchar2,
+723  	v_sqlnumber in number)
+724  is
+725  	 CURSOR SQL_CURSOR IS
+726  	   select
+727  	   SQL_ID,
+728  	   EXECUTE_PLAN_HASH
+729  	   from
+730  	   test_results
+731  	   where
+732  	   sqlnumber=v_sqlnumber and
+733  	   TEST_NAME=v_test_name;
+734  	 SQL_REC SQL_CURSOR%ROWTYPE;
+735  
+736  	 CURSOR SQL_CURSOR2(p_sql_id varchar2,p_plan_hash number)
+737  	   IS
+738  	   select PLAN_TABLE_OUTPUT from
+739  	      table(DBMS_XPLAN.DISPLAY_AWR(p_sql_id,
+740  	      p_plan_hash,
+741  	      NULL,
+742  	      'ALL'));
+743  	 SQL_REC2 SQL_CURSOR2%ROWTYPE;
+744  
+745  begin
+746  
+747  	 OPEN SQL_CURSOR;
+748  	 LOOP
+749  	     FETCH SQL_CURSOR INTO SQL_REC;
+750  	     EXIT WHEN SQL_CURSOR%NOTFOUND;
+751  
+752  	     OPEN SQL_CURSOR2(SQL_REC.SQL_ID,SQL_REC.EXECUTE_PLAN_HASH);
+753  
+754  	     LOOP
+755  		FETCH SQL_CURSOR2 INTO SQL_REC2;
+756  		EXIT WHEN SQL_CURSOR2%NOTFOUND;
+757  
+758  		DBMS_OUTPUT.put_line(SQL_REC2.PLAN_TABLE_OUTPUT);
+759  	     END LOOP;
+760  
+761  	  END LOOP;
+762  	 CLOSE SQL_CURSOR;
+763  
+764  end show_executed_plan;
+765  
+766  end TEST_SELECT;
+767  /
+
+Package body created.
+
+SQL> show errors
+No errors.
+SQL> 
+SQL> -- create dblink to produser
+SQL> -- assumes tnsnames.ora entry
+SQL> -- is orcl
+SQL> 
+SQL> drop database link mylink;
+drop database link mylink
+                   *
+ERROR at line 1:
+ORA-02024: database link not found
+
+
+SQL> 
+SQL> create database link mylink
+  2  connect to produser
+  3  identified by produser
+  4  using 'orcl';
+
+Database link created.
+
+SQL> 
+SQL> select * from dual@mylink;
+
+D
+-
+X
+
+SQL> 
+SQL> -- copy select statements from produser
+SQL> -- and dump out to show they are there.
+SQL> 
+SQL> execute TEST_SELECT.copy_select_statements('MYLINK');
+
+PL/SQL procedure successfully completed.
+
+SQL> 
+SQL> select * from select_statements order by sqlnumber;
+
+ SQLNUMBER SQL_TEXT
+---------- ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+         1 select blocks from produser.test_table where owner='SYS' and table_name='DUAL'
+         2 select sum(blocks) from produser.test_table
+
+SQL> 
+SQL> -- get plans for the select statements - no index
+SQL> 
+SQL> execute TEST_SELECT.get_explain_plans('NOINDEX');
+
+PL/SQL procedure successfully completed.
+
+SQL> 
+SQL> select * from test_results;
+
+TEST_NAME                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         SQLNUMBER SQL_ID        EXPLAIN_PLAN_HASH EXECUTE_PLAN_HASH ROWS_FETCHED ELAPSED_IN_SECONDS CPU_USED_BY_THIS_SESSION CONSISTENT_GETS DB_BLOCK_GETS PARSE_TIME_ELAPSED PHYSICAL_READS ERROR_MESSAGE
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- ---------- ------------- ----------------- ----------------- ------------ ------------------ ------------------------ --------------- ------------- ------------------ -------------- ----------------------------------------------------------------
+NOINDEX                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   1                      3979868219
+NOINDEX                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   2                       711311523
+
+SQL> 
+SQL> -- add index
+SQL> 
+SQL> connect produser/produser
+Connected.
+SQL> 
+SQL> create index test_index on test_table (owner,table_name);
+
+Index created.
+
+SQL> 
+SQL> execute dbms_stats.gather_index_stats('PRODUSER','TEST_INDEX');
+
+PL/SQL procedure successfully completed.
+
+SQL> 
+SQL> -- get plans for the select statements - index in place
+SQL> 
+SQL> connect testuser/testuser
+Connected.
+SQL> 
+SQL> execute TEST_SELECT.get_explain_plans('INDEX');
+
+PL/SQL procedure successfully completed.
+
+SQL> 
+SQL> select * from test_results;
+
+TEST_NAME                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         SQLNUMBER SQL_ID        EXPLAIN_PLAN_HASH EXECUTE_PLAN_HASH ROWS_FETCHED ELAPSED_IN_SECONDS CPU_USED_BY_THIS_SESSION CONSISTENT_GETS DB_BLOCK_GETS PARSE_TIME_ELAPSED PHYSICAL_READS ERROR_MESSAGE
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- ---------- ------------- ----------------- ----------------- ------------ ------------------ ------------------------ --------------- ------------- ------------------ -------------- ----------------------------------------------------------------
+NOINDEX                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   1                      3979868219
+NOINDEX                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   2                       711311523
+INDEX                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     1                      3317829024
+INDEX                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     2                       711311523
+
+SQL> 
+SQL> -- execute only the queries whose plans are different - with index
+SQL> 
+SQL> execute TEST_SELECT.execute_diff_plans('INDEX','NOINDEX');
+
+PL/SQL procedure successfully completed.
+
+SQL> 
+SQL> -- drop index and reexecute same queries with different plans
+SQL> -- with no index.
+SQL> 
+SQL> connect produser/produser
+Connected.
+SQL> 
+SQL> drop index test_index;
+
+Index dropped.
+
+SQL> 
+SQL> connect testuser/testuser
+Connected.
+SQL> 
+SQL> execute TEST_SELECT.execute_diff_plans('NOINDEX','INDEX');
+
+PL/SQL procedure successfully completed.
+
+SQL> 
+SQL> select * from test_results;
+
+TEST_NAME                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         SQLNUMBER SQL_ID        EXPLAIN_PLAN_HASH EXECUTE_PLAN_HASH ROWS_FETCHED ELAPSED_IN_SECONDS CPU_USED_BY_THIS_SESSION CONSISTENT_GETS DB_BLOCK_GETS PARSE_TIME_ELAPSED PHYSICAL_READS ERROR_MESSAGE
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- ---------- ------------- ----------------- ----------------- ------------ ------------------ ------------------------ --------------- ------------- ------------------ -------------- ----------------------------------------------------------------
+NOINDEX                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   1 d2tkh4sw76k1n        3979868219        3979868219            1                  0                       34          101398            24                  2         101210
+NOINDEX                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   2                       711311523
+INDEX                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     1 d2tkh4sw76k1n        3317829024        3317829024            1                  0                        3             237            14                  3              1
+INDEX                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     2                       711311523
+
+SQL> 
+SQL> -- show comparison
+SQL> 
+SQL> set serveroutput on size 1000000
+SQL> 
+SQL> execute TEST_SELECT.display_results('NOINDEX','INDEX');
+	
+Select statements that ran 3 times faster with NOINDEX than with INDEX.
+	
+T1=NOINDEX
+T2=INDEX
+	
+	SQLNUMBER T1_EXECUTE_PLAN_HASH T2_EXECUTE_PLAN_HASH T1_ELAPSED_IN_SECONDS T2_ELAPSED_IN_SECONDS
+	--------- -------------------- -------------------- --------------------- ---------------------
+	
+Number of selects=0
+	
+Select statements that ran 3 times faster with INDEX than with NOINDEX.
+	
+T1=INDEX
+T2=NOINDEX
+	
+	SQLNUMBER T1_EXECUTE_PLAN_HASH T2_EXECUTE_PLAN_HASH T1_ELAPSED_IN_SECONDS T2_ELAPSED_IN_SECONDS
+	--------- -------------------- -------------------- --------------------- ---------------------
+	
+Number of selects=0
+	
+Summary of test results
+	
+	           TEST_NAME TOTAL_ELAPSED_IN_SECONDS SELECTS_EXECUTED AVERAGE_ELAPSED_IN_SECONDS
+	-------------------- ------------------------ ---------------- --------------------------
+	             NOINDEX                        0                1                          0
+	               INDEX                        0                1                          0
+
+PL/SQL procedure successfully completed.
+
+SQL> 
+SQL> -- run all queries no index
+SQL> 
+SQL> execute TEST_SELECT.execute_all('NOINDEX');
+Executed SQL number 1
+Executed SQL number 2
+
+PL/SQL procedure successfully completed.
+
+SQL> 
+SQL> -- put the index back and rerun all with the index
+SQL> 
+SQL> -- add index
+SQL> 
+SQL> connect produser/produser
+Connected.
+SQL> 
+SQL> create index test_index on test_table (owner,table_name);
+
+Index created.
+
+SQL> 
+SQL> execute dbms_stats.gather_index_stats('PRODUSER','TEST_INDEX');
+
+PL/SQL procedure successfully completed.
+
+SQL> 
+SQL> connect testuser/testuser
+Connected.
+SQL> 
+SQL> execute TEST_SELECT.execute_all('INDEX');
+
+PL/SQL procedure successfully completed.
+
+SQL> 
+SQL> select * from test_results;
+
+TEST_NAME                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         SQLNUMBER SQL_ID        EXPLAIN_PLAN_HASH EXECUTE_PLAN_HASH ROWS_FETCHED ELAPSED_IN_SECONDS CPU_USED_BY_THIS_SESSION CONSISTENT_GETS DB_BLOCK_GETS PARSE_TIME_ELAPSED PHYSICAL_READS ERROR_MESSAGE
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- ---------- ------------- ----------------- ----------------- ------------ ------------------ ------------------------ --------------- ------------- ------------------ -------------- ----------------------------------------------------------------
+NOINDEX                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   1 d2tkh4sw76k1n        3979868219        3979868219            1                  0                       32          101234            14                  1         101210
+NOINDEX                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   2 2bddnbc8xpdyq         711311523         711311523            1                  1                       48          101233            14                  1         101210
+INDEX                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     1 d2tkh4sw76k1n        3317829024        3317829024            1                  0                        2              15            24                  0              7
+INDEX                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     2 2bddnbc8xpdyq         711311523         711311523            1                  0                       47          101233            14                  1         101210
+
+SQL> 
+SQL> set serveroutput on size 1000000
+SQL> 
+SQL> execute TEST_SELECT.display_results('NOINDEX','INDEX');
+	
+Select statements that ran 3 times faster with NOINDEX than with INDEX.
+	
+T1=NOINDEX
+T2=INDEX
+	
+	SQLNUMBER T1_EXECUTE_PLAN_HASH T2_EXECUTE_PLAN_HASH T1_ELAPSED_IN_SECONDS T2_ELAPSED_IN_SECONDS
+	--------- -------------------- -------------------- --------------------- ---------------------
+	
+Number of selects=0
+	
+Select statements that ran 3 times faster with INDEX than with NOINDEX.
+	
+T1=INDEX
+T2=NOINDEX
+	
+	SQLNUMBER T1_EXECUTE_PLAN_HASH T2_EXECUTE_PLAN_HASH T1_ELAPSED_IN_SECONDS T2_ELAPSED_IN_SECONDS
+	--------- -------------------- -------------------- --------------------- ---------------------
+	        2            711311523            711311523                     0                     1
+	
+Number of selects=1
+	
+Summary of test results
+	
+	           TEST_NAME TOTAL_ELAPSED_IN_SECONDS SELECTS_EXECUTED AVERAGE_ELAPSED_IN_SECONDS
+	-------------------- ------------------------ ---------------- --------------------------
+	             NOINDEX                        1                2                          0
+	               INDEX                        0                2                          0
+
+PL/SQL procedure successfully completed.
+
+SQL> 
+SQL> -- update select statements to make them error
+SQL> 
+SQL> execute TEST_SELECT.update_select_statements('sum(blocks)','WRONG');
+
+PL/SQL procedure successfully completed.
+
+SQL> 
+SQL> execute TEST_SELECT.execute_all('INDEX');
+Executed SQL number 1
+Error on SQL number 2
+ORA-00904: "WRONG": invalid identifier
+
+PL/SQL procedure successfully completed.
+
+SQL> 
+SQL> select * from test_results;
+
+TEST_NAME                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         SQLNUMBER SQL_ID        EXPLAIN_PLAN_HASH EXECUTE_PLAN_HASH ROWS_FETCHED ELAPSED_IN_SECONDS CPU_USED_BY_THIS_SESSION CONSISTENT_GETS DB_BLOCK_GETS PARSE_TIME_ELAPSED PHYSICAL_READS ERROR_MESSAGE
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- ---------- ------------- ----------------- ----------------- ------------ ------------------ ------------------------ --------------- ------------- ------------------ -------------- ----------------------------------------------------------------
+NOINDEX                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   1 d2tkh4sw76k1n        3979868219        3979868219            1                  0                       32          101234            14                  1         101210
+NOINDEX                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   2 2bddnbc8xpdyq         711311523         711311523            1                  1                       48          101233            14                  1         101210
+INDEX                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     1 d2tkh4sw76k1n        3317829024        3317829024            1                  0                        1               7            14                  0              0
+INDEX                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     2 2bddnbc8xpdyq         711311523         711311523            1                  0                       47          101233            14                  1         101210 ORA-00904: "WRONG": invalid identifier
+
+SQL> 
+SQL> -- fix errors and rerun the ones that errored only.
+SQL> 
+SQL> execute TEST_SELECT.update_select_statements('WRONG','sum(blocks)');
+
+PL/SQL procedure successfully completed.
+
+SQL> 
+SQL> execute TEST_SELECT.reexecute_errored('INDEX');
+Executed SQL number 2
+
+PL/SQL procedure successfully completed.
+
+SQL> 
+SQL> select * from test_results;
+
+TEST_NAME                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         SQLNUMBER SQL_ID        EXPLAIN_PLAN_HASH EXECUTE_PLAN_HASH ROWS_FETCHED ELAPSED_IN_SECONDS CPU_USED_BY_THIS_SESSION CONSISTENT_GETS DB_BLOCK_GETS PARSE_TIME_ELAPSED PHYSICAL_READS ERROR_MESSAGE
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- ---------- ------------- ----------------- ----------------- ------------ ------------------ ------------------------ --------------- ------------- ------------------ -------------- ----------------------------------------------------------------
+NOINDEX                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   1 d2tkh4sw76k1n        3979868219        3979868219            1                  0                       32          101234            14                  1         101210
+NOINDEX                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   2 2bddnbc8xpdyq         711311523         711311523            1                  1                       48          101233            14                  1         101210
+INDEX                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     1 d2tkh4sw76k1n        3317829024        3317829024            1                  0                        1               7            14                  0              0
+INDEX                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     2 2bddnbc8xpdyq         711311523         711311523            1                  1                       45          101227            14                  0         101210
+
+SQL> 
+SQL> -- show the plans - explained and executed
+SQL> 
+SQL> select
+  2  TEST_SELECT.show_explained_plan('NOINDEX',1)
+  3  from dual;
+
+TEST_SELECT.SHOW_EXPLAINED_PLAN('NOINDEX',1)
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Plan Hash Value  : 3979868219
+
+----------------------------------------------------------------------------
+| Id  | Operation           | Name       | Rows | Bytes | Cost  | Time     |
+----------------------------------------------------------------------------
+|   0 | SELECT STATEMENT    |            |   41 |  1271 | 27614 | 00:05:32 |
+| * 1 |   TABLE ACCESS FULL | TEST_TABLE |   41 |  1271 | 27614 | 00:05:32 |
+----------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+------------------------------------------
+* 1 - filter("TABLE_NAME"='DUAL' AND "OWNER"='SYS')
+
+
+SQL> 
+SQL> set serveroutput on size 1000000
+SQL> 
+SQL> execute test_select.show_executed_plan('NOINDEX',1);
+SQL_ID d2tkh4sw76k1n
+--------------------
+select blocks from produser.test_table where owner='SYS' and
+table_name='DUAL'
+Plan hash value: 3979868219
+--------------------------------------------------------------------------------
+| Id  | Operation         | Name       | Rows  | Bytes | Cost (%CPU)| Time     |
+--------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT  |            |       |       |    31 (100)|          |
+|   1 |  TABLE ACCESS FULL| TEST_TABLE |     1 |    47 |    31   (0)| 00:00:01 |
+--------------------------------------------------------------------------------
+Query Block Name / Object Alias (identified by operation id):
+-------------------------------------------------------------
+1 - SEL$1 / TEST_TABLE@SEL$1
+Note
+-----
+- dynamic sampling used for this statement (level=2)
+
+PL/SQL procedure successfully completed.
+
+SQL> 
+SQL> spool off

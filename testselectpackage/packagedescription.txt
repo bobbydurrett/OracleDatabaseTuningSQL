@@ -1,0 +1,103 @@
+Package name: test_selects
+
+Purpose: 
+
+The test_selects package includes all the procedures needed to extract
+select statements from a production database and to test them in a test environment
+with various configuration options such as gathering statistics different ways, setting
+different init parameter values, indexing, partitioning, etc.
+
+This package is only intended to work with select statements that don't have any
+bind variables.
+
+Tables:
+
+plan_table - schema that contains the test_select package needs the current plan table 
+which you can create by running $ORACLE_HOME/rdbms/admin/utlxplan.sql on the
+database server where your test database resides.
+
+select_statements (sqlnumber, sql_text) - contains sql statements that were
+extracted from the production database server.  A copy exists on the production server
+and the test server.
+
+test_results (test_name,sqlnumber,sql_id,explain_plan_hash,execute_plan_hash,
+rows_fetched,elapsed_in_seconds,buffer_gets,physical_reads,error_number,error_message)
+
+Columns:
+
+sqlnumber number - Used to indicate which sql statement is being referred to.  If you
+extract 100 selects from production and they will be numbered 1-100.
+
+sql_text clob - Full text of select statement.  Using clob because large sql statements
+are hard to run in sqlplus with their long lines > 2500 characters.
+
+test_name varchar2(2000) - Gives a string that can be used to describe a particular set of 
+conditions that are being tested.  For example "Production stats" or "Empty stats on X".
+
+sql_id - record what the test database thinks the sql_id is for the sql_text.
+
+explain_plan_hash - plan_hash_value for an explain plan on the sql statement.
+
+execute_plan_hash - plan_hash_value for the plan the executed statement actually ran.
+
+rows_fetched - number of rows fetched by the select statement.
+
+elapsed_in_seconds - time it took to run the select statement in seconds.
+
+buffer_gets - number of buffer gets in the run of the select statement.
+
+physical_reads - number of physical reads in the run of the select statement.
+
+error_number - if the statement errors out record the ORA-xxxxx number.
+
+error_text - if the statement errors out record the error text.
+
+Procedures:
+
+collect_select_statements(max_number_selects,
+include_pattern1,...,include_pattern10,
+exclude_pattern1,...,exclude_pattern10) - This proc is run on the
+the source database to collect select statements including statements that have
+the include patterns and excluding those whohave the exclude patterns.  
+Patterns use LIKE conditions %x%.
+
+copy_select_statements(link_name)
+copies select statements from remote source database
+pointed to by link_name's db link.
+
+update_select_statements(from_text,to_text) - updates select statement text.  
+Used to change table names and schema names.  I.e. from prodschema.prodtablename 
+to testschema.testtablename.
+
+get_explain_plans(test_name) - runs explain plan against every select recording the 
+current test name.  I.e. get_explain_plans('production stats').  Plans are stored in
+plan_table by sqlnumber.
+
+execute_all(test_name) - execute every query for the current test scenario.
+
+execute_diff_plans(test_name,compared_to_test_name) - execute only the queries
+whose plan under the current test_name differ from previous test name
+compared_to_test_name.  So, if test_name is "Production stats" and
+compared_to_test_name is "Empty stats" then we assume you have run get_explain_plans
+for both "Production stats" and "Empty stats" and only run the sqls whose plans
+
+display_results(test_name,compared_to_test_name) - output results of testings in the
+two scenarios.  List results from all queries that ran more than 3 times as long
+with one test or the other.  Also summarize results with total elapsed time,
+number of queries executed, average elapsed time, and percent improvement.
+
+show_explained_plan(test_name,sqlnumber) - extract plan from plan_table for given test name
+and sql statement.
+
+reexecute_errored(v_test_name) - re-execute every query for the current test scenario
+that had an error.
+
+show_executed_plan(test_name,sqlnumber) - extract plan from AWR for given test name
+and sql statement.
+
+Needed privileges (grant to package owner):
+
+select any table
+execute any procedure
+select any dictionary
+create procedure
