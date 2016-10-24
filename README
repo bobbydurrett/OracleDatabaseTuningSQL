@@ -1,2 +1,16 @@
 # OracleDatabaseTuningSQL
-SQL scripts for Oracle Database Tuning
+
+These are the SQL scripts that Bobby Durrett uses for Oracle
+database performance tuning.
+
+These scripts are designed to be run through Oracle's sqlplus utility.
+
+So, if you have a script called example.sql you would run it like this in
+sqlplus:
+
+sqlplus myuser/mypassword@mydatabase < example.sql
+
+- Bobby Durrett
+
+http://www.bobbydurrettdba.com/
+
