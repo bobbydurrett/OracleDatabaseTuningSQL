@@ -1,0 +1,1 @@
+tkprof MYDB_ora_26324.trc tkprofout.txt waits=yes "sort=(PRSELA,EXEELA,FCHELA)" SYS=YES
