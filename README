@@ -14,9 +14,11 @@ Directories:
 
 ash                      - Active Session History related
 
+awr                      - Automatic Workload Repository related
+
 force_matching_signature - Queries that use force_matching_signature
 
-misc                     - Standalone queries
+misc                     - Queries that don't fall into another category
 
 optimizerstatistics      - Values that the optimizer uses
 
