@@ -24,6 +24,8 @@ set define off
 
 -- list out the SQL statement ids by 
 -- max run time
+-- In this example filter by program
+-- to just get jdbc connections
 
 select
 sql_id,
@@ -40,7 +42,9 @@ between
 to_date('28-OCT-2016 08:00:00','DD-MON-YYYY HH24:MI:SS')
 and 
 to_date('28-OCT-2016 11:00:00','DD-MON-YYYY HH24:MI:SS')
+and program ='JDBC Thin Client'
 and sql_id is not null
+and SQL_EXEC_ID is not null
 group by sql_id,SQL_EXEC_ID)
 group by sql_id
 order by max_interval desc;
