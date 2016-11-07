@@ -32,9 +32,10 @@ from V$ACTIVE_SESSION_HISTORY a
 where 
 sample_time 
 between 
-to_date('20-OCT-2016 17:00:00','DD-MON-YYYY HH24:MI:SS')
+to_date('07-NOV-2016 07:00:00','DD-MON-YYYY HH24:MI:SS')
 and 
-to_date('20-OCT-2016 17:30:00','DD-MON-YYYY HH24:MI:SS') and
+to_date('07-NOV-2016 09:00:00','DD-MON-YYYY HH24:MI:SS') and
+SQL_EXEC_ID is not null and
 sql_id='0gt3cjptk68vw'
 group by SQL_EXEC_ID,SQL_EXEC_START
 order by SQL_EXEC_START,SQL_EXEC_ID;
