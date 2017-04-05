@@ -95,6 +95,8 @@ that had an error.
 show_executed_plan(test_name,sqlnumber) - extract plan from AWR for given test name
 and sql statement.
 
+execute_one(test_name,sqlnumber) - execute one query
+
 Needed privileges (grant to package owner):
 
 select any table

@@ -137,6 +137,16 @@ procedure show_executed_plan(
    v_test_name in varchar2,
    v_sqlnumber in number);
    
+/*
+
+execute_one(test_name,sqlnumber) - rerun one sql statement
+
+*/
+   
+procedure execute_one(
+   v_test_name in varchar2,
+   v_sqlnumber in number);
+
 END;
 /
 show errors
@@ -905,6 +915,58 @@ begin
     CLOSE SQL_CURSOR;
 
 end show_executed_plan;
+
+procedure execute_one(
+v_test_name in varchar2,
+v_sqlnumber in number) 
+is
+    CURSOR SQL_CURSOR IS 
+        SELECT  
+            s.sqlnumber,
+            s.sql_text
+        FROM 
+            select_statements s,
+            test_results t
+        WHERE
+            s.sqlnumber=t.sqlnumber and
+            s.sqlnumber = v_sqlnumber and
+            t.test_name = v_test_name
+        ORDER by sqlnumber;
+    SQL_REC SQL_CURSOR%ROWTYPE;
+
+begin
+ 
+    OPEN SQL_CURSOR;
+    LOOP
+        FETCH SQL_CURSOR INTO SQL_REC;
+        EXIT WHEN SQL_CURSOR%NOTFOUND;
+        
+        update test_results t
+        set t.error_message=NULL
+        where 
+        t.sqlnumber=SQL_REC.sqlnumber and
+        t.test_name=v_test_name;
+        
+        commit;
+
+        begin
+          runselect(v_test_name,
+                 SQL_REC.sqlnumber,
+                 SQL_REC.sql_text);
+
+          DBMS_OUTPUT.put_line('Executed SQL number '||SQL_REC.sqlnumber);
+          
+        EXCEPTION
+          WHEN others THEN
+            DBMS_OUTPUT.put_line('Error on SQL number '||SQL_REC.sqlnumber);
+            DBMS_OUTPUT.put_line(SQLERRM);
+            update_error(v_test_name,SQL_REC.sqlnumber,SQLERRM);
+        end;
+        commit;
+     END LOOP;
+    CLOSE SQL_CURSOR;
+
+end execute_one;
 
 end TEST_SELECT;
 /
