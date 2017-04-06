@@ -758,37 +758,31 @@ begin
     DBMS_OUTPUT.PUT_LINE(CHR(9));
     DBMS_OUTPUT.PUT_LINE('Number of selects='||to_char(row_cnt));
     
-    -- summary results for test 1
-    
+    -- summary results 
+        
     select
-    sum(ELAPSED_IN_SECONDS),
+    sum(t1.ELAPSED_IN_SECONDS),
     count(*),
-    sum(ELAPSED_IN_SECONDS)/count(*)
+    sum(t1.ELAPSED_IN_SECONDS)/count(*),
+    sum(t2.ELAPSED_IN_SECONDS),
+    sum(t2.ELAPSED_IN_SECONDS)/count(*)
     into
     t1_elapsed,
     t1_count,
-    t1_average
-    from
-    test_results
-    where
-    TEST_NAME=v_test_name and
-    EXECUTE_PLAN_HASH is not null;
-    
-    -- summary results for test 1
-    
-    select
-    sum(ELAPSED_IN_SECONDS),
-    count(*),
-    sum(ELAPSED_IN_SECONDS)/count(*)
-    into
+    t1_average,
     t2_elapsed,
-    t2_count,
     t2_average
     from
-    test_results
+    test_results t1,
+    test_results t2
     where
-    TEST_NAME=compared_to_test_name and
-    EXECUTE_PLAN_HASH is not null;
+    t1.SQLNUMBER=t2.SQLNUMBER and
+    t1.TEST_NAME=v_test_name and
+    t2.TEST_NAME=compared_to_test_name and
+    t1.ELAPSED_IN_SECONDS is not null and
+    t2.ELAPSED_IN_SECONDS is not null;
+    
+    t2_count := t1_count;
     
     DBMS_OUTPUT.PUT_LINE(CHR(9));
     DBMS_OUTPUT.PUT_LINE('Summary of test results');
