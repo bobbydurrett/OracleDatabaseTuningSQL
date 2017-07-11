@@ -18,7 +18,7 @@ set echo on
 set termout on
 set trimspool on
 
-spool &ns.test.log
+spool &ns.test2.log
 
 set timing on
 
