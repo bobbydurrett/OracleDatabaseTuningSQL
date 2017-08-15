@@ -28,6 +28,8 @@ set define off
 
 set timing on
 
+alter session set db_securefile='PERMITTED';
+
 drop table MYUSER.findsqlresults;
 
 create table MYUSER.findsqlresults as select SQL_ID,
