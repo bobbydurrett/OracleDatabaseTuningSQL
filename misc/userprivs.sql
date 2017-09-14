@@ -14,16 +14,16 @@ select user u from dual;
 set sqlprompt &ns:&us>
 
 set head on
-set echo on
-set termout on
+set echo off
+set termout off
 set trimspool on
+set feedback off
 
 set serveroutput on size 1000000
 
-spool &ns.userprivs.log
-
--- Manually edit the user name below and this script lists out the
--- system priviles and a summary of the table privileges for the user.
+-- Pass the name of the user as the first argument
+-- to this script. Will report on that users system
+-- and table privileges.
 
 -- create tables for procedure
 
@@ -50,8 +50,9 @@ BEGIN
 
 -- set to name of user that you want to find all
 -- system and table privileges for
+-- argument to script
 
-  user_name := 'SYSTEM';
+  user_name := '&&1';
 
 -- do initial load of tables with users privileges
 
@@ -132,8 +133,15 @@ column owner format a20
 column privilege format a40
 column granted_role format a20
 
+spool &ns.&&1.userprivs.log
+
+execute dbms_output.put_line('System privileges for user '||'&&1');
+
 select * from my_sys_privs
 order by privilege;
+
+execute dbms_output.put_line('---------------------------------');
+execute dbms_output.put_line('Table privileges for user '||'&&1');
 
 select owner,privilege,count(*)
 from my_tab_privs
@@ -141,3 +149,4 @@ group by owner,privilege
 order by owner,privilege;
 
 spool off
+exit
