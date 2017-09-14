@@ -1,5 +1,5 @@
 set linesize 32000
-set pagesize 1000
+set pagesize 50000
 set long 2000000000
 set longchunksize 1000
 set head off;
@@ -132,6 +132,7 @@ show errors
 column owner format a20
 column privilege format a40
 column granted_role format a20
+column table_name format a80
 
 spool &ns.&&1.userprivs.log
 
@@ -140,13 +141,20 @@ execute dbms_output.put_line('System privileges for user '||'&&1');
 select * from my_sys_privs
 order by privilege;
 
-execute dbms_output.put_line('---------------------------------');
-execute dbms_output.put_line('Table privileges for user '||'&&1');
+execute dbms_output.put_line('-');
+execute dbms_output.put_line('Summarized table privileges for user '||'&&1');
 
 select owner,privilege,count(*)
 from my_tab_privs
 group by owner,privilege
 order by owner,privilege;
+
+execute dbms_output.put_line('-');
+execute dbms_output.put_line('Detailed table privileges for user '||'&&1');
+
+select privilege,owner,table_name
+from my_tab_privs
+order by privilege,owner,table_name;
 
 spool off
 exit
