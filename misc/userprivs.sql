@@ -141,7 +141,7 @@ execute dbms_output.put_line('System privileges for user '||'&&1');
 select * from my_sys_privs
 order by privilege;
 
-execute dbms_output.put_line('-');
+execute dbms_output.put_line(chr(9));
 execute dbms_output.put_line('Summarized table privileges for user '||'&&1');
 
 select owner,privilege,count(*)
@@ -149,7 +149,7 @@ from my_tab_privs
 group by owner,privilege
 order by owner,privilege;
 
-execute dbms_output.put_line('-');
+execute dbms_output.put_line(chr(9));
 execute dbms_output.put_line('Detailed table privileges for user '||'&&1');
 
 select privilege,owner,table_name
