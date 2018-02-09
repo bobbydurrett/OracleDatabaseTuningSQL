@@ -1,5 +1,7 @@
-set linesize 1000
+set linesize 32000
 set pagesize 1000
+set long 2000000000
+set longchunksize 1000
 set trimspool on
 
 set head off;
@@ -48,7 +50,7 @@ LOOP
       PLAN_REC.MAX_SNAP_ID||';');
     DBMS_OUTPUT.PUT_LINE('select * from table(DBMS_XPLAN.DISPLAY_AWR('||
       '''&&1'','''||
-      PLAN_REC.PLAN_HASH_VALUE||''',NULL,''ALL''));');
+      PLAN_REC.PLAN_HASH_VALUE||''',NULL,''OUTLINE''));');
 END LOOP;
 CLOSE PLAN_CURSOR;
 END;

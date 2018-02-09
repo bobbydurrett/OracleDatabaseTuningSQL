@@ -33,4 +33,6 @@ select * from table(dbms_xplan.display('PLAN_TABLE',NULL,'ADVANCED'));
 
 select object_name from plan_table;
 
+rollback;
+
 spool off
