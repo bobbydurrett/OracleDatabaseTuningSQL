@@ -23,7 +23,15 @@ spool &ns.fmsstat.log
 column END_INTERVAL_TIME format a25
 column FORCE_MATCHING_SIGNATURE format 99999999999999999999
 
-select ss.FORCE_MATCHING_SIGNATURE,
+-- use 
+-- ss.sql_id = '4b89z8jgqxr88' 
+-- or
+-- ss.FORCE_MATCHING_SIGNATURE = 2407690495325880429
+-- first line of where clause
+
+select 
+ss.FORCE_MATCHING_SIGNATURE,
+ss.SQL_ID,
 ss.plan_hash_value,
 sn.END_INTERVAL_TIME,
 ss.executions_delta,
@@ -37,7 +45,8 @@ BUFFER_GETS_DELTA/executions_delta "Average buffer gets",
 DISK_READS_DELTA/executions_delta "Average disk reads",
 ROWS_PROCESSED_DELTA/executions_delta "Average rows processed"
 from DBA_HIST_SQLSTAT ss,DBA_HIST_SNAPSHOT sn
-where ss.FORCE_MATCHING_SIGNATURE = 2145581403433541363
+where 
+ss.FORCE_MATCHING_SIGNATURE = 2407690495325880429
 and ss.snap_id=sn.snap_id
 and executions_delta > 0
 and ss.INSTANCE_NUMBER=sn.INSTANCE_NUMBER
