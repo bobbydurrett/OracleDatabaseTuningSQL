@@ -26,7 +26,6 @@ set define off
 
 column TABLESPACE_NAME format a30
 column LATEST_UNRECOVERABLE_TIME format a30
-column NUMBER_UNRECOVERABLE_DATAFILES format n30
 
 select
 ts.NAME TABLESPACE_NAME,
