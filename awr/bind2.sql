@@ -5,7 +5,7 @@ set pagesize 1000
 set trimspool on
 
 column NAME format a3
-column VALUE_STRING format a17
+column VALUE_STRING format a19
 
 spool bind2.log
 
@@ -17,7 +17,7 @@ sb.VALUE_STRING
 from 
 DBA_HIST_SQLBIND sb
 where 
-sb.sql_id='gxk0cj3qxug85' and
+sb.sql_id='g0v5p7v7cdjc5' and
 sb.WAS_CAPTURED='YES')
 order by 
 DATE_TIME,
