@@ -26,11 +26,11 @@ spool &ns.average.log
 select
 ss.sql_id,
 ss.plan_hash_value,
-sum(ss.ELAPSED_TIME_DELTA)/1000000*
-case sum(ss.executions_delta) when 0 then 1 else sum(ss.executions_delta) end avg_elapsed_seconds
+sum(ss.ELAPSED_TIME_DELTA)/
+(1000000*case sum(ss.executions_delta) when 0 then 1 else sum(ss.executions_delta) end) avg_elapsed_seconds
 from DBA_HIST_SQLSTAT ss
 where 
-ss.sql_id = '48vz1td6gygw1'
+ss.sql_id = '5crdk2jjaw300'
 group by
 ss.sql_id,
 ss.plan_hash_value;
