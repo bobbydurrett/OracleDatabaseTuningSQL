@@ -95,6 +95,11 @@ indsize i
 where
 t.table_name = i.table_name;
 
+drop table schematabs;
+drop table schemainds;
+drop table tabsize;
+drop table indsize;
+
 spool off
 
 exit
