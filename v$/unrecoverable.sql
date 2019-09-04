@@ -22,21 +22,22 @@ spool &ns.unrecoverable.log
 
 -- includes ideas from http://www.dba-oracle.com/t_unrecoverable_data_file.htm
 
-set define off
+UNDEFINE DAYSOLD
 
 column TABLESPACE_NAME format a30
 column LATEST_UNRECOVERABLE_TIME format a30
 
 select
 ts.NAME TABLESPACE_NAME,
-max(UNRECOVERABLE_TIME) LATEST_UNRECOVERABLE_TIME,
+to_char(max(UNRECOVERABLE_TIME),'YYYY-MM-DD HH24:MI:SS') LATEST_UNRECOVERABLE_TIME,
 count(df.FILE#) NUMBER_UNRECOVERABLE_DATAFILES
 from 
 v$datafile df, 
 v$tablespace ts
 where 
 df.UNRECOVERABLE_CHANGE# <> 0 and
-df.TS# = ts.TS#
+df.TS# = ts.TS# and
+sysdate - UNRECOVERABLE_TIME < &&DAYSOLD
 group by ts.name
 order by LATEST_UNRECOVERABLE_TIME desc;
 
