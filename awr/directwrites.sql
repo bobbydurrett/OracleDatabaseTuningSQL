@@ -33,8 +33,7 @@ before.instance_number=after.instance_number and
 after.snap_id=sn.snap_id and
 after.instance_number=sn.instance_number and
 after.FUNCTION_NAME = 'Direct Writes' and
-before.FUNCTION_NAME = after.FUNCTION_NAME and
-before.SMALL_WRITE_MEGABYTES+before.LARGE_WRITE_MEGABYTES <= after.SMALL_WRITE_MEGABYTES+after.LARGE_WRITE_MEGABYTES
+before.FUNCTION_NAME = after.FUNCTION_NAME
 order by to_char(sn.END_INTERVAL_TIME,'YYYY-MM-DD HH24:MI:SS');
 
 spool off
