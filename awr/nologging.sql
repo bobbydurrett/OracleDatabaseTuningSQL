@@ -20,16 +20,16 @@ set trimspool on
 
 spool &ns.nologging.log
 
--- Estimate of the amount of NOLOGGING I/O in between two snapshots.
--- Idea is that DBWR + Direct Writes write I/O minus the LGWR write I/O
--- roughly corresponds to the amount of NOLOGGING I/O through something 
--- like an insert with append hint
+-- Show three write I/O numbers from DBA_HIST_IOSTAT_FUNCTION that may relate to NOLOGGING I/O.
+-- NOLOGGING I/O such as insert with append hint should show up as Direct Writes write I/O.
+-- Logged I/O should eventually be flushed out of the block cache and show up as DBWR write I/O.
+-- Any logged I/O whether Direct Writes or not will show up immediately as LGWR write I/O.
 
 select 
 to_char(sn.END_INTERVAL_TIME,'YYYY-MM-DD HH24:MI:SS') "End snapshot time",
-(adirect.SMALL_WRITE_MEGABYTES+adirect.LARGE_WRITE_MEGABYTES-bdirect.SMALL_WRITE_MEGABYTES-bdirect.LARGE_WRITE_MEGABYTES)+
-(adbwr.SMALL_WRITE_MEGABYTES+adbwr.LARGE_WRITE_MEGABYTES-bdbwr.SMALL_WRITE_MEGABYTES-bdbwr.LARGE_WRITE_MEGABYTES)-
-(algwr.SMALL_WRITE_MEGABYTES+algwr.LARGE_WRITE_MEGABYTES-blgwr.SMALL_WRITE_MEGABYTES-blgwr.LARGE_WRITE_MEGABYTES) NOLOGGING_MEGABYTES
+(adirect.SMALL_WRITE_MEGABYTES+adirect.LARGE_WRITE_MEGABYTES-bdirect.SMALL_WRITE_MEGABYTES-bdirect.LARGE_WRITE_MEGABYTES) "Direct Writes(MB)",
+(adbwr.SMALL_WRITE_MEGABYTES+adbwr.LARGE_WRITE_MEGABYTES-bdbwr.SMALL_WRITE_MEGABYTES-bdbwr.LARGE_WRITE_MEGABYTES) "DBWR(MB)",
+(algwr.SMALL_WRITE_MEGABYTES+algwr.LARGE_WRITE_MEGABYTES-blgwr.SMALL_WRITE_MEGABYTES-blgwr.LARGE_WRITE_MEGABYTES) "LGWR(MB)"
 from 
 DBA_HIST_IOSTAT_FUNCTION bdirect, 
 DBA_HIST_IOSTAT_FUNCTION adirect,
