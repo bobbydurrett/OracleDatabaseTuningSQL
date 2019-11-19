@@ -414,6 +414,7 @@ procedure runselect(
     a_db_block_gets number;
     a_parse_time_elapsed number;
     a_physical_reads number;
+    v_dummy varchar2(1);
 
 BEGIN
     select sysdate into before_date from dual;
@@ -458,6 +459,8 @@ BEGIN
     clob_cursor := DBMS_SQL.OPEN_CURSOR;
     
     DBMS_SQL.PARSE (clob_cursor,sqlclob,DBMS_SQL.NATIVE);
+    
+    DBMS_SQL.DEFINE_COLUMN(clob_cursor,1,v_dummy,1);
     
     rows_fetched := DBMS_SQL.EXECUTE_AND_FETCH (clob_cursor);
     total_rows_fetched := rows_fetched;
