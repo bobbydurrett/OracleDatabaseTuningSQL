@@ -308,7 +308,7 @@ v_sqlnumber in number)
     
 begin
 
--- check for failed explain plan - NULL plan_hash_value
+-- check for failed explain plan - 0 plan_hash_value
 
   begin
     select t.PLAN_TABLE_OUTPUT 
@@ -321,7 +321,7 @@ begin
     WHEN others THEN
       DBMS_OUTPUT.put_line('Error getting plan in update_explain_plan_hash on SQL number '||v_sqlnumber);
       DBMS_OUTPUT.put_line(SQLERRM);
-      plan_hash_value := NULL;
+      plan_hash_value := 0;
   end;
 
   select count(*) into row_cnt
@@ -486,7 +486,7 @@ BEGIN
     from v$session 
     where audsid=USERENV('SESSIONID');
     
--- check for failed explain plan - NULL plan_hash_value
+-- check for failed explain plan - 0 plan_hash_value
 
     begin
       select t.PLAN_TABLE_OUTPUT 
@@ -499,7 +499,7 @@ BEGIN
       WHEN others THEN
         DBMS_OUTPUT.put_line('Error getting plan in runselect on SQL number '||v_sqlnumber);
         DBMS_OUTPUT.put_line(SQLERRM);
-        plan_hash_value := NULL;
+        plan_hash_value := 0;
     end;
    
 -- record current values of session statistics
