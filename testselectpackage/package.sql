@@ -308,12 +308,21 @@ v_sqlnumber in number)
     
 begin
 
-  select t.PLAN_TABLE_OUTPUT 
-  into planoutput 
-  from table(dbms_xplan.display('PLAN_TABLE',v_test_name||to_char(v_sqlnumber),'BASIC')) t
-  where t.plan_table_output like 'Plan%';
-  
-  plan_hash_value:=to_number(substr(planoutput,18));
+-- check for failed explain plan - NULL plan_hash_value
+
+  begin
+    select t.PLAN_TABLE_OUTPUT 
+    into planoutput 
+    from table(dbms_xplan.display('PLAN_TABLE',v_test_name||to_char(v_sqlnumber),'BASIC')) t
+    where t.plan_table_output like 'Plan%';
+    
+    plan_hash_value := to_number(substr(planoutput,18));
+  EXCEPTION
+    WHEN others THEN
+      DBMS_OUTPUT.put_line('Error on SQL number '||v_sqlnumber);
+      DBMS_OUTPUT.put_line(SQLERRM);
+      plan_hash_value := NULL;
+  end;
 
   select count(*) into row_cnt
   from test_results t
@@ -373,7 +382,6 @@ begin
           DBMS_SQL.PARSE (clob_cursor,sqlclob,DBMS_SQL.NATIVE);
           ignored_value := DBMS_SQL.EXECUTE(clob_cursor);
           DBMS_SQL.CLOSE_CURSOR (clob_cursor);
- 
           update_explain_plan_hash(test_name,SQL_REC.sqlnumber);
           DBMS_OUTPUT.put_line('Plan explained for SQL number '||SQL_REC.sqlnumber);
           
