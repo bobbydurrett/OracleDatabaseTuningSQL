@@ -319,7 +319,7 @@ begin
     plan_hash_value := to_number(substr(planoutput,18));
   EXCEPTION
     WHEN others THEN
-      DBMS_OUTPUT.put_line('Error on SQL number '||v_sqlnumber);
+      DBMS_OUTPUT.put_line('Error getting plan in update_explain_plan_hash on SQL number '||v_sqlnumber);
       DBMS_OUTPUT.put_line(SQLERRM);
       plan_hash_value := NULL;
   end;
@@ -485,14 +485,23 @@ BEGIN
     into query_sql_id,cursor_child_no
     from v$session 
     where audsid=USERENV('SESSIONID');
-
-    select t.PLAN_TABLE_OUTPUT 
-    into planoutput 
-    from table(dbms_xplan.display_cursor(query_sql_id,cursor_child_no,'BASIC')) t
-    where t.plan_table_output like 'Plan%';
-  
-    plan_hash_value:=to_number(substr(planoutput,18));
     
+-- check for failed explain plan - NULL plan_hash_value
+
+    begin
+      select t.PLAN_TABLE_OUTPUT 
+      into planoutput 
+      from table(dbms_xplan.display_cursor(query_sql_id,cursor_child_no,'BASIC')) t
+      where t.plan_table_output like 'Plan%';
+    
+      plan_hash_value:=to_number(substr(planoutput,18));
+    EXCEPTION
+      WHEN others THEN
+        DBMS_OUTPUT.put_line('Error getting plan in runselect on SQL number '||v_sqlnumber);
+        DBMS_OUTPUT.put_line(SQLERRM);
+        plan_hash_value := NULL;
+    end;
+   
 -- record current values of session statistics
 
     select
