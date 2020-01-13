@@ -21,6 +21,8 @@ consistent_gets number,
 db_block_gets number,
 parse_time_elapsed number,
 physical_reads number,
+user_commits number,
+db_block_changes number,
 error_message varchar2(64));
 
 create unique index test_results_i1 on test_results(test_name,sqlnumber);
