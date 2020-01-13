@@ -574,6 +574,8 @@ BEGIN
     
     elapsed_time_seconds := (after_date-before_date)*24*3600;
     
+    rollback;
+    
     select count(*) into row_cnt
     from test_results t
     where 
