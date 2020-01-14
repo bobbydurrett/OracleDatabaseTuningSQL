@@ -437,13 +437,13 @@ BEGIN
 -- record current values of session statistics
 
     select
-    s1.value CPU_used_by_this_session,
-    s2.value consistent_gets,
-    s3.value db_block_gets,
-    s4.value parse_time_elapsed,
-    s5.value physical_reads,
-    s6.value user_commits,
-    s7.value db_block_changes
+    max(s1.value) CPU_used_by_this_session,
+    max(s2.value) consistent_gets,
+    max(s3.value) db_block_gets,
+    max(s4.value) parse_time_elapsed,
+    max(s5.value) physical_reads,
+    max(s6.value) user_commits,
+    max(s7.value) db_block_changes
     into
     b_CPU_used_by_this_session,
     b_consistent_gets,
@@ -508,13 +508,13 @@ BEGIN
 -- record current values of session statistics
 
     select
-    s1.value CPU_used_by_this_session,
-    s2.value consistent_gets,
-    s3.value db_block_gets,
-    s4.value parse_time_elapsed,
-    s5.value physical_reads,
-    s6.value user_commits,
-    s7.value db_block_changes
+    max(s1.value) CPU_used_by_this_session,
+    max(s2.value) consistent_gets,
+    max(s3.value) db_block_gets,
+    max(s4.value) parse_time_elapsed,
+    max(s5.value) physical_reads,
+    max(s6.value) user_commits,
+    max(s7.value) db_block_changes
     into
     a_CPU_used_by_this_session,
     a_consistent_gets,
