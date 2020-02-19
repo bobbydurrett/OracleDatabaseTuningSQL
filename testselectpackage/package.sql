@@ -320,7 +320,7 @@ begin
   EXCEPTION
     WHEN others THEN
       DBMS_OUTPUT.put_line('Error getting plan in update_explain_plan_hash on SQL number '||v_sqlnumber);
-      DBMS_OUTPUT.put_line(SQLERRM);
+      DBMS_OUTPUT.put_line(DBMS_UTILITY.FORMAT_ERROR_STACK);
       plan_hash_value := 0;
   end;
 
@@ -388,7 +388,7 @@ begin
         EXCEPTION
           WHEN others THEN
 	    DBMS_OUTPUT.put_line('Error on SQL number '||SQL_REC.sqlnumber);
-	    DBMS_OUTPUT.put_line(SQLERRM);
+	    DBMS_OUTPUT.put_line(DBMS_UTILITY.FORMAT_ERROR_STACK);
 	    update_error(test_name,SQL_REC.sqlnumber,SQLERRM);
         end;
         commit;
@@ -500,10 +500,13 @@ BEGIN
 
     DBMS_SQL.CLOSE_CURSOR (clob_cursor);
     
-    SELECT prev_sql_id,PREV_CHILD_NUMBER 
-    into query_sql_id,cursor_child_no
-    from v$session 
-    where audsid=USERENV('SESSIONID');
+    SELECT PREV_SQL_ID,PREV_CHILD_NUMBER 
+    INTO QUERY_SQL_ID,CURSOR_CHILD_NO
+    FROM
+    (SELECT ROWNUM RN,PREV_SQL_ID,PREV_CHILD_NUMBER 
+    FROM V$SESSION 
+    WHERE AUDSID=USERENV('SESSIONID'))
+    WHERE RN = 1;
    
 -- record current values of session statistics
 
@@ -566,7 +569,7 @@ BEGIN
     EXCEPTION
       WHEN others THEN
         DBMS_OUTPUT.put_line('Error getting plan in runselect on SQL number '||v_sqlnumber);
-        DBMS_OUTPUT.put_line(SQLERRM);
+        DBMS_OUTPUT.put_line(DBMS_UTILITY.FORMAT_ERROR_STACK);
         plan_hash_value := 0;
     end;
                 
@@ -652,7 +655,7 @@ begin
         EXCEPTION
           WHEN others THEN
 	    DBMS_OUTPUT.put_line('Error on SQL number '||SQL_REC.sqlnumber);
-	    DBMS_OUTPUT.put_line(SQLERRM);
+	    DBMS_OUTPUT.put_line(DBMS_UTILITY.FORMAT_ERROR_STACK);
 	    update_error(test_name,SQL_REC.sqlnumber,SQLERRM);
         end;
         commit;
@@ -702,7 +705,7 @@ begin
           EXCEPTION
             WHEN others THEN
 	      DBMS_OUTPUT.put_line('Error on SQL number '||SQL_REC.sqlnumber);
-	      DBMS_OUTPUT.put_line(SQLERRM);
+	      DBMS_OUTPUT.put_line(DBMS_UTILITY.FORMAT_ERROR_STACK);
 	      update_error(v_test_name,SQL_REC.sqlnumber,SQLERRM);
           end;
           commit;
@@ -913,7 +916,7 @@ begin
         EXCEPTION
           WHEN others THEN
 	    DBMS_OUTPUT.put_line('Error on SQL number '||SQL_REC.sqlnumber);
-	    DBMS_OUTPUT.put_line(SQLERRM);
+	    DBMS_OUTPUT.put_line(DBMS_UTILITY.FORMAT_ERROR_STACK);
 	    update_error(v_test_name,SQL_REC.sqlnumber,SQLERRM);
         end;
         commit;
@@ -1010,7 +1013,7 @@ begin
         EXCEPTION
           WHEN others THEN
             DBMS_OUTPUT.put_line('Error on SQL number '||SQL_REC.sqlnumber);
-            DBMS_OUTPUT.put_line(SQLERRM);
+            DBMS_OUTPUT.put_line(DBMS_UTILITY.FORMAT_ERROR_STACK);
             update_error(v_test_name,SQL_REC.sqlnumber,SQLERRM);
         end;
         commit;
