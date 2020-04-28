@@ -33,9 +33,10 @@ select
 to_char(LAST_ACTIVE_TIME,'YYYY-MM-DD HH24:MI:SS') LAST_ACTIVE,
 SQL_ID,
 PLAN_HASH_VALUE,
+EXECUTIONS,
 trunc(ELAPSED_TIME/(EXECUTIONS* 1000)) "Avg Elapsed ms"
 from V$SQLAREA
-where SQL_ID = 'acn0557p77na2' and
+where SQL_ID = 'dy86xh05fzq13' and
 executions > 0
 order by LAST_ACTIVE_TIME desc;
 
