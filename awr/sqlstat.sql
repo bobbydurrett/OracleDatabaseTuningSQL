@@ -25,7 +25,7 @@ spool &ns.sqlstat.log
 
 column END_INTERVAL_TIME format a25
 
--- g0wqzdhxy62mc
+-- 17n867xcuy2qv
 
 select 
 sql_id,
@@ -40,6 +40,7 @@ APWAIT_DELTA/(nonzeroexecutions*1000) "Application Average ms",
 CCWAIT_DELTA/(nonzeroexecutions*1000) "Concurrency Average ms",
 BUFFER_GETS_DELTA/nonzeroexecutions "Average buffer gets",
 DISK_READS_DELTA/nonzeroexecutions "Average disk reads",
+trunc(PHYSICAL_WRITE_BYTES_DELTA/(1024*1024*nonzeroexecutions)) "Average disk write megabytes",
 ROWS_PROCESSED_DELTA/nonzeroexecutions "Average rows processed"
 from
 (select 
@@ -57,9 +58,10 @@ APWAIT_DELTA,
 CCWAIT_DELTA,
 BUFFER_GETS_DELTA,
 DISK_READS_DELTA,
+PHYSICAL_WRITE_BYTES_DELTA,
 ROWS_PROCESSED_DELTA
 from DBA_HIST_SQLSTAT ss,DBA_HIST_SNAPSHOT sn
-where ss.sql_id = 'g0wqzdhxy62mc'
+where ss.sql_id = '17n867xcuy2qv'
 and ss.snap_id=sn.snap_id
 and ss.INSTANCE_NUMBER=sn.INSTANCE_NUMBER)
 where ELAPSED_TIME_DELTA > 0
