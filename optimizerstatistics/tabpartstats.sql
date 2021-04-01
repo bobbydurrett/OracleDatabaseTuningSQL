@@ -21,10 +21,10 @@ column owner format a20
 column table_name format a30
 
 select tp.table_owner,tp.table_name,tp.partition_name,tp.num_rows,tp.BLOCKS,tp.AVG_ROW_LEN,tp.SAMPLE_SIZE,
-to_char(tp.last_analyzed,'YYYY-MM-DD HH24:MI:SS') "LAST_ANALYZED"      
+to_char(tp.last_analyzed,'YYYY-MM-DD HH24:MI:SS') "LAST_ANALYZED",tp.HIGH_VALUE     
 from DBA_TAB_PARTITIONS tp, tablelist t
 where tp.table_owner=t.table_owner and
 tp.table_name = t.table_name
-order by tp.table_name,tp.partition_name;
+order by tp.table_name,tp.PARTITION_POSITION;
 
 spool off
