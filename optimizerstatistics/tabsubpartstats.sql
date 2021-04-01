@@ -20,11 +20,23 @@ spool &ns.tabsubpartstats.log
 column owner format a20
 column table_name format a30
 
-select tp.table_owner,tp.table_name,tp.PARTITION_NAME,tp.subpartition_name,tp.num_rows,tp.BLOCKS,tp.AVG_ROW_LEN,tp.SAMPLE_SIZE,
-to_char(tp.last_analyzed,'YYYY-MM-DD HH24:MI:SS') "LAST_ANALYZED", tp.HIGH_VALUE      
-from DBA_TAB_SUBPARTITIONS tp, tablelist t
-where tp.table_owner=t.table_owner and
-tp.table_name = t.table_name
-order by tp.table_name,tp.PARTITION_NAME,tp.SUBPARTITION_POSITION;
+drop table part_info;
+
+create table part_info as
+select tp.table_owner,tp.table_name,tp.partition_name,tp.PARTITION_POSITION
+from tablelist t, dba_tab_partitions tp
+where
+tp.table_owner=t.table_owner and
+tp.table_name=t.table_name;
+
+
+select tsp.table_owner,tsp.table_name,tsp.PARTITION_NAME,tsp.subpartition_name,tsp.num_rows,tsp.BLOCKS,tsp.AVG_ROW_LEN,tsp.SAMPLE_SIZE,
+to_char(tsp.last_analyzed,'YYYY-MM-DD HH24:MI:SS') "LAST_ANALYZED", tsp.HIGH_VALUE      
+from DBA_TAB_SUBPARTITIONS tsp, part_info pi
+where 
+tsp.table_owner=pi.table_owner and
+tsp.table_name=pi.table_name and
+tsp.partition_name=pi.partition_name
+order by tsp.table_name,pi.PARTITION_POSITION,tsp.SUBPARTITION_POSITION;
 
 spool off
