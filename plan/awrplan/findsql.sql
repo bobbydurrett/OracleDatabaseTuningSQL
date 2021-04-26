@@ -30,9 +30,9 @@ set timing on
 
 alter session set db_securefile='PERMITTED';
 
-drop table MYUSER.findsqlresults;
+drop table findsqlresults;
 
-create table MYUSER.findsqlresults as select SQL_ID,
+create table findsqlresults as select SQL_ID,
             SQL_TEXT
         FROM DBA_HIST_SQLTEXT 
         where 1=2;
@@ -64,7 +64,7 @@ BEGIN
         LOOP
             FETCH TEXT_CURSOR INTO TEXT_REC;
             EXIT WHEN TEXT_CURSOR%NOTFOUND;
-            insert into MYUSER.findsqlresults values (TEXT_REC.SQL_ID,TEXT_REC.SQL_TEXT);
+            insert into findsqlresults values (TEXT_REC.SQL_ID,TEXT_REC.SQL_TEXT);
             commit;
          END LOOP;
         CLOSE TEXT_CURSOR;
@@ -74,6 +74,6 @@ END;
 /
 show errors
 
-select * from MYUSER.findsqlresults;
+select * from findsqlresults;
 
 spool off
