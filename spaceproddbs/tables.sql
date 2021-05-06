@@ -18,14 +18,18 @@ set trimspool on
 spool &ns.tables.log
 
 select 
-owner,
-table_name,
-tablespace_name,
-((blocks*8192)/(1024*1024)) Meg,
-num_rows
-from dba_tables 
-where blocks is not null and
-((blocks*8192)/(1024*1024)) > 100
-order by blocks desc;
+t.owner,
+t.table_name,
+t.tablespace_name,
+((t.blocks*s.block_size)/(1024*1024)) Meg,
+t.num_rows
+from 
+dba_tables t,
+dba_tablespaces s
+where t.blocks is not null and
+((t.blocks*s.block_size)/(1024*1024)) > 100 and
+t.tablespace_name=s.tablespace_name and
+t.owner <> 'SYS'
+order by t.blocks desc;
 
 spool off

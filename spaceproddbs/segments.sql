@@ -23,14 +23,15 @@ substr(SEGMENT_NAME,1,25) Name,
 substr(PARTITION_NAME,1,25) Partition,
 substr(SEGMENT_TYPE,1,20) Type,
 tablespace_name,
-((blocks*8192)/(1024*1024)) Meg,
+(bytes/(1024*1024)) Meg,
 EXTENTS,        
 MAX_EXTENTS,
 NEXT_EXTENT,    
 PCT_INCREASE
 from dba_segments 
-where blocks is not null and
-((blocks*8192)/(1024*1024)) > 100
+where bytes is not null and
+(bytes/(1024*1024)) > 100 and
+owner <> 'SYS'
 order by blocks desc;
 
 spool off
