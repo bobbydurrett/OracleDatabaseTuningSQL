@@ -19,20 +19,15 @@ set termout on
 set trimspool on
 set serveroutput on size 1000000
 
-spool &ns.dumpsql.log
+spool &ns.vdumpsql.log
 
-set define off
+-- gfpsmk5fs4002
 
 select
-SQL_ID,
-SQL_TEXT
-FROM DBA_HIST_SQLTEXT 
+SQL_FULLTEXT
+FROM GV$SQL
 where
-dbid = (select dbid from v$database) and
-sql_id in
-('2whm2vvjb98k7',
- 'gjarrbf18rg9s')
-order by sql_id;
-
+sql_id = 'gfpsmk5fs4002'
+and rownum < 2;
 
 spool off
