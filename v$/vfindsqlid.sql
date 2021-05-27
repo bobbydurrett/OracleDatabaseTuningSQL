@@ -1,5 +1,7 @@
 set linesize 1000
 set pagesize 1000
+set long 2000000000
+set longchunksize 1000
 set head off;
 set verify off;
 set termout off;
@@ -14,13 +16,17 @@ set sqlprompt &ns:&us>
 set head on
 set echo on
 set termout on
+set trimspool on
+set serveroutput on size 1000000
 
-spool &ns.findsql.log
+spool &ns.vfindsqlid.log
 
-select address,hash_value,SQL_TEXT  from v$sqltext outer
-where (address,hash_value) in 
-(select address,hash_value from v$sqltext inner
-where SQL_TEXT like '%&SEARCHSTRING%')
-order by address,hash_value,piece;
+select
+distinct sql_id
+from
+V$SQL
+where
+upper(SQL_FULLTEXT) like '%SOMETEXT%'
+order by sql_id;
 
 spool off
