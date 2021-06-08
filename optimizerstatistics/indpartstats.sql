@@ -30,6 +30,6 @@ where i.table_owner=t.table_owner and
 i.table_name = t.table_name
 and i.owner=ip.index_owner
 and i.index_name=ip.index_name
-order by i.table_name,ip.index_name,ip.partition_name;
+order by i.table_name,ip.index_name,ip.PARTITION_POSITION;
 
 spool off
