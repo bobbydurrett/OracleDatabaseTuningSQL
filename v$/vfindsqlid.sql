@@ -1,4 +1,4 @@
-set linesize 1000
+set linesize 2000
 set pagesize 1000
 set long 2000000000
 set longchunksize 1000
@@ -22,11 +22,12 @@ set serveroutput on size 1000000
 spool &ns.vfindsqlid.log
 
 select
-distinct sql_id
+sql_id,max(LAST_ACTIVE_TIME) LASTACTV,SQL_TEXT
 from
 V$SQL
 where
 upper(SQL_FULLTEXT) like '%SOMETEXT%'
-order by sql_id;
+group by sql_id,SQL_TEXT
+order by LASTACTV desc;
 
 spool off
