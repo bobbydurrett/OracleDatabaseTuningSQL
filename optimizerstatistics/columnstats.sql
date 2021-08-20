@@ -21,7 +21,7 @@ column table_name format a30
 column column_name format a30
 column lo format a30
 column hi format a30
-column data_default format a30
+column data_default format a60
 
 select tc.table_name,column_name,
 decode(data_type,'NUMBER',to_char(utl_raw.cast_to_number(low_value))

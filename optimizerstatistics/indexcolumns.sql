@@ -21,7 +21,7 @@ spool &ns.indexcolumns.log
 column table_name format a30
 column index_name format a30
 column column_name format a30
-column column_expression format a30
+column column_expression format a70
 
 select 
 ic.table_name,
