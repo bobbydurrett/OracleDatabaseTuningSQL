@@ -29,17 +29,31 @@ drop table topsigs;
 create table topsigs as
 select 
 FORCE_MATCHING_SIGNATURE,
-max(sql_id) a_sql_id,
 count(*) active
 from DBA_HIST_ACTIVE_SESS_HISTORY a
 where 
 sample_time 
 between 
-to_date('24-AUG-2021 19:25:00','DD-MON-YYYY HH24:MI:SS')
+to_date('13-SEP-2021 01:00:19','DD-MON-YYYY HH24:MI:SS')
 and 
-to_date('24-AUG-2021 21:42:00','DD-MON-YYYY HH24:MI:SS')
+to_date('13-SEP-2021 06:52:25','DD-MON-YYYY HH24:MI:SS')
 group by
 FORCE_MATCHING_SIGNATURE;
+
+drop table sigtoid;
+
+create table sigtoid as
+select 
+t.FORCE_MATCHING_SIGNATURE,
+min(a.sql_id) a_sql_id
+from
+topsigs t,
+DBA_HIST_ACTIVE_SESS_HISTORY a,
+DBA_HIST_SQLTEXT s
+where
+t.FORCE_MATCHING_SIGNATURE = a.FORCE_MATCHING_SIGNATURE and
+a.sql_id = s.sql_id
+group by t.FORCE_MATCHING_SIGNATURE;
 
 drop table idtotext;
 
@@ -48,7 +62,7 @@ select
 i.a_sql_id sql_id,
 st.sql_text
 from
-topsigs i,
+sigtoid i,
 DBA_HIST_SQLTEXT st
 where
 i.a_sql_id = st.sql_id;
@@ -58,13 +72,15 @@ i.a_sql_id = st.sql_id;
 select
 t.active,
 t.FORCE_MATCHING_SIGNATURE,
-t.a_sql_id example_sql_id,
+s.a_sql_id example_sql_id,
 x.sql_text
 from
 topsigs t,
+sigtoid s,
 idtotext x
 where
-t.a_sql_id = x.sql_id
+t.FORCE_MATCHING_SIGNATURE = s.FORCE_MATCHING_SIGNATURE and
+s.a_sql_id = x.sql_id
 order by active desc;
 
 
