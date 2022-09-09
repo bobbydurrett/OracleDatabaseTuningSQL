@@ -35,8 +35,8 @@ from dba_segments
 where 
 (owner,segment_name) in 
 (('&&TABOWNER','&&TABNAME')) and
-segment_type in ('TABLE','TABLE PARTITION')
-union
+segment_type in ('TABLE','TABLE PARTITION','TABLE SUBPARTITION')
+union all
 select s.tablespace_name,s.bytes
 from dba_segments s, dba_indexes i
 where 
@@ -46,7 +46,7 @@ and
 i.owner=s.owner and
 i.index_name=s.segment_name
 and
-segment_type in ('INDEX','INDEX PARTITION')
+segment_type in ('INDEX','INDEX PARTITION','INDEX SUBPARTITION')
 )
 group by tablespace_name
 order by tablespace_name;
