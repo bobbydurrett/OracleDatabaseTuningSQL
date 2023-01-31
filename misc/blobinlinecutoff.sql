@@ -38,7 +38,7 @@ declare
   w integer;
 begin
   c := 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
-  c := c||c||c||c||c||c||c||c||c||c||c||c||c||c||c||c||c||c||c||c||c||c||c||c||c||c||c||c||c||c||c;
+  c := c||c||c||c||c||c||c||c||c||c||c||c||c||c||c||c||c||c||c||c||c||c||c||c||c||c||c||c||c||c||c||c||c;
   c := substr(c,1,&&1);
   
   DBMS_LOB.CreateTemporary(b, true);
