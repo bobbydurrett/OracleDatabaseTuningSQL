@@ -18,6 +18,8 @@ SQL\*Plus:
 
 * `force_matching_signature` - Queries that use force_matching_signature
 
+* `lob` - Queries related to lobs
+
 * `misc` - Queries that don't fall into another category
 
 * `optimizerstatistics` - Values that the optimizer uses
