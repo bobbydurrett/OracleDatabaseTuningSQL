@@ -22,7 +22,7 @@ spool &ns.vsqlarea.log
 
 -- Performance information for one SQL_ID or
 -- one FORCE_MATCHING_SIGNATURE
--- from V$SQLAREA
+-- from GV$SQLAREA
 --
 -- Can use SQL_ID = 'your sql id' or
 -- FORCE_MATCHING_SIGNATURE = your force matching signature
@@ -35,9 +35,10 @@ FORCE_MATCHING_SIGNATURE,
 SQL_ID,
 PLAN_HASH_VALUE,
 EXECUTIONS,
-trunc(ELAPSED_TIME/(EXECUTIONS)) "Avg Elapsed microseconds"
-from V$SQLAREA
-where FORCE_MATCHING_SIGNATURE = 2407690495325880429 and
+trunc(ELAPSED_TIME/(EXECUTIONS)) "Avg Elapsed microseconds",
+INST_ID
+from GV$SQLAREA
+where SQL_ID = '8tkv06rrrszbb' and
 executions > 0
 order by LAST_ACTIVE_TIME desc;
 
