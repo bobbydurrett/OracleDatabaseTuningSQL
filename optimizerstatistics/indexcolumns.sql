@@ -22,12 +22,16 @@ column table_name format a30
 column index_name format a30
 column column_name format a30
 column column_expression format a70
+column ind_columns format a70
 
 select 
 ic.table_name,
 ic.INDEX_NAME,
 ic.column_name,
-ie.COLUMN_EXPRESSION
+ie.COLUMN_EXPRESSION,
+listagg(ic.column_name, ', ') 
+WITHIN GROUP (ORDER BY ic.table_name,ic.INDEX_NAME,ic.column_position) 
+OVER(PARTITION BY ic.TABLE_NAME,ic.INDEX_NAME) IND_COLUMNS
 from DBA_IND_COLUMNS ic, tablelist t,DBA_IND_EXPRESSIONS ie
 where ic.table_owner=t.table_owner and 
 ic.table_name = t.table_name and
