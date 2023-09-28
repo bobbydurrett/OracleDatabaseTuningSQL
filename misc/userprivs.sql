@@ -142,6 +142,14 @@ execute dbms_output.put_line(chr(9));
 execute dbms_output.put_line('Privileges granted directly to user '||'&&1');
 
 execute dbms_output.put_line(chr(9));
+execute dbms_output.put_line('Role privileges for user '||'&&1');
+
+select distinct GRANTED_ROLE
+from dba_role_privs 
+where grantee='&&1'
+order by GRANTED_ROLE;
+
+execute dbms_output.put_line(chr(9));
 execute dbms_output.put_line('System privileges for user '||'&&1');
 
 select distinct privilege
