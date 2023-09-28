@@ -136,6 +136,44 @@ column table_name format a80
 
 spool &ns.&&1.userprivs.log
 
+execute dbms_output.put_line(chr(9));
+execute dbms_output.put_line('**************************************************************************************');
+execute dbms_output.put_line(chr(9));
+execute dbms_output.put_line('Privileges granted directly to user '||'&&1');
+
+execute dbms_output.put_line(chr(9));
+execute dbms_output.put_line('System privileges for user '||'&&1');
+
+select distinct privilege
+from dba_sys_privs 
+where grantee='&&1'
+order by privilege;
+
+execute dbms_output.put_line(chr(9));
+execute dbms_output.put_line('Summarized table privileges for user '||'&&1');
+
+select owner,privilege,count(*)
+from dba_tab_privs 
+where grantee='&&1'
+group by owner,privilege
+order by owner,privilege;
+
+execute dbms_output.put_line(chr(9));
+execute dbms_output.put_line('Detailed table privileges for user '||'&&1');
+
+select distinct privilege,owner,table_name
+from dba_tab_privs 
+where grantee='&&1'
+order by privilege,owner,table_name;
+
+execute dbms_output.put_line(chr(9));
+execute dbms_output.put_line('**************************************************************************************');
+
+
+execute dbms_output.put_line(chr(9));
+execute dbms_output.put_line('Privileges granted through a role or directly to user '||'&&1');
+
+execute dbms_output.put_line(chr(9));
 execute dbms_output.put_line('System privileges for user '||'&&1');
 
 select * from my_sys_privs
@@ -155,6 +193,16 @@ execute dbms_output.put_line('Detailed table privileges for user '||'&&1');
 select privilege,owner,table_name
 from my_tab_privs
 order by privilege,owner,table_name;
+
+execute dbms_output.put_line(chr(9));
+execute dbms_output.put_line('**************************************************************************************');
+execute dbms_output.put_line(chr(9));
+
+execute dbms_output.put_line('Account status for user '||'&&1');
+
+select account_status 
+from dba_users
+where username='&&1';
 
 spool off
 exit
