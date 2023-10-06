@@ -206,11 +206,17 @@ execute dbms_output.put_line(chr(9));
 execute dbms_output.put_line('**************************************************************************************');
 execute dbms_output.put_line(chr(9));
 
-execute dbms_output.put_line('Account status for user '||'&&1');
+execute dbms_output.put_line('Account status, last password change for user '||'&&1');
 
-select account_status 
-from dba_users
-where username='&&1';
+select 
+du.account_status,
+to_char(u.ptime,'YYYY-MM-DD HH24:MI:SS') last_password_chng
+from 
+dba_users du, 
+sys.user$ u
+where 
+du.username='&&1' and
+du.username=u.name;
 
 spool off
 exit
