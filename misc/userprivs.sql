@@ -206,10 +206,14 @@ execute dbms_output.put_line(chr(9));
 execute dbms_output.put_line('**************************************************************************************');
 execute dbms_output.put_line(chr(9));
 
-execute dbms_output.put_line('Account status, last password change for user '||'&&1');
+execute dbms_output.put_line('Account status, profile, last password change for user '||'&&1');
+
+column account_status format a15
+column profile format a10
 
 select 
 du.account_status,
+du.profile,
 to_char(u.ptime,'YYYY-MM-DD HH24:MI:SS') last_password_chng
 from 
 dba_users du, 
@@ -217,6 +221,20 @@ sys.user$ u
 where 
 du.username='&&1' and
 du.username=u.name;
+
+execute dbms_output.put_line(chr(9));
+execute dbms_output.put_line('**************************************************************************************');
+execute dbms_output.put_line(chr(9));
+
+
+execute dbms_output.put_line('Role named '||'&&1');
+
+select
+role
+from
+dba_roles
+where
+role = '&&1';
 
 spool off
 exit
