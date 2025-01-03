@@ -21,107 +21,60 @@ set trimspool on
 spool &ns.checksuppl.log
 
 
-select * from dba_users where username='FIVETRAN';
-select * from dba_role_privs where grantee='FIVETRAN';
-select * from dba_sys_privs where grantee='FIVETRAN';
-select * from dba_tab_privs where grantee='FIVETRAN';
+select * from dba_users where username='AWSDMS';
+select * from dba_role_privs where grantee='AWSDMS';
+select * from dba_sys_privs where grantee='AWSDMS';
+select * from dba_tab_privs where grantee='AWSDMS';
 
-SELECT SUPPLEMENTAL_LOG_DATA_MIN,LOG_MODE FROM V$DATABASE;
+SELECT 
+LOG_MODE,
+SUPPLEMENTAL_LOG_DATA_MIN MIN, 
+SUPPLEMENTAL_LOG_DATA_PK PK, 
+SUPPLEMENTAL_LOG_DATA_UI UI, 
+SUPPLEMENTAL_LOG_DATA_ALL ALL_LOG 
+FROM V$DATABASE;
+
 
 select 
 table_name
 from 
 dba_tables
-WHERE owner = 'WMCOMMADM'
+WHERE owner = 'CASADM'
 AND table_name in
 (
-'AUDIT_LOG',
-'CDMR',
-'CDMR_ADJ_ACHEADER',
-'CDMR_ADJ_ACLINE',
-'CDMR_ADJ_CANOINVOICE',
-'CDMR_ADJ_HEADER',
-'CDMR_ADJ_LINE',
-'CDMR_ADJ_NONINVOICE',
-'CDMR_INVOICE_LINE',
-'CDMR_MOREINFO',
-'CDMR_MOREINFO_ITEMS',
-'CDMR_REASONCODE',
-'CDMR_REQ_APPROVERS',
-'CMDR_COMMENTS',
-'REQUISITION'
+'CMPLY_REB_SLS_DTL'
 )
 order by table_name;
 
 SELECT *
 FROM dba_log_groups
-WHERE owner = 'WMCOMMADM'
+WHERE owner = 'CASADM'
 AND table_name in
 (
-'AUDIT_LOG',
-'CDMR',
-'CDMR_ADJ_ACHEADER',
-'CDMR_ADJ_ACLINE',
-'CDMR_ADJ_CANOINVOICE',
-'CDMR_ADJ_HEADER',
-'CDMR_ADJ_LINE',
-'CDMR_ADJ_NONINVOICE',
-'CDMR_INVOICE_LINE',
-'CDMR_MOREINFO',
-'CDMR_MOREINFO_ITEMS',
-'CDMR_REASONCODE',
-'CDMR_REQ_APPROVERS',
-'CMDR_COMMENTS',
-'REQUISITION'
+'CMPLY_REB_SLS_DTL'
 )
 order by table_name;
 
 select * from
 dba_tab_privs
 where
-OWNER = 'WMCOMMADM'
+OWNER = 'CASADM'
 AND table_name in
 (
-'AUDIT_LOG',
-'CDMR',
-'CDMR_ADJ_ACHEADER',
-'CDMR_ADJ_ACLINE',
-'CDMR_ADJ_CANOINVOICE',
-'CDMR_ADJ_HEADER',
-'CDMR_ADJ_LINE',
-'CDMR_ADJ_NONINVOICE',
-'CDMR_INVOICE_LINE',
-'CDMR_MOREINFO',
-'CDMR_MOREINFO_ITEMS',
-'CDMR_REASONCODE',
-'CDMR_REQ_APPROVERS',
-'CMDR_COMMENTS',
-'REQUISITION') and
-GRANTEE = 'FIVETRAN'
+'CMPLY_REB_SLS_DTL'
+) and
+GRANTEE = 'AWSDMS'
 and
 PRIVILEGE = 'SELECT'
 order by table_name;
 
 SELECT *
 FROM ALL_CONSTRAINTS
-WHERE owner = 'WMCOMMADM'
+WHERE owner = 'CASADM'
 AND table_name in
 (
-'AUDIT_LOG',
-'CDMR',
-'CDMR_ADJ_ACHEADER',
-'CDMR_ADJ_ACLINE',
-'CDMR_ADJ_CANOINVOICE',
-'CDMR_ADJ_HEADER',
-'CDMR_ADJ_LINE',
-'CDMR_ADJ_NONINVOICE',
-'CDMR_INVOICE_LINE',
-'CDMR_MOREINFO',
-'CDMR_MOREINFO_ITEMS',
-'CDMR_REASONCODE',
-'CDMR_REQ_APPROVERS',
-'CMDR_COMMENTS',
-'REQUISITION')
+'CMPLY_REB_SLS_DTL'
+)
 AND constraint_type='P'
 order by table_name;
 
