@@ -2,6 +2,7 @@
 @parameters.sql
 @tables.sql
 @segments.sql
+@tempfiles.sql
 @freespace.sql
 @rollback.sql
 @fileio.sql
