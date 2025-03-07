@@ -213,14 +213,21 @@ column profile format a10
 
 select 
 du.account_status,
-du.profile,
+du.profile
+from 
+dba_users du
+where 
+du.username='&&1';
+
+execute dbms_output.put_line(chr(9));
+
+select 
 to_char(u.ptime,'YYYY-MM-DD HH24:MI:SS') last_password_chng
 from 
-dba_users du, 
 sys.user$ u
 where 
-du.username='&&1' and
-du.username=u.name;
+u.name='&&1';
+
 
 execute dbms_output.put_line(chr(9));
 execute dbms_output.put_line('**************************************************************************************');
