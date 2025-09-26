@@ -21,10 +21,10 @@ set trimspool on
 spool &ns.checksuppl.log
 
 
-select * from dba_users where username='AWSDMS';
-select * from dba_role_privs where grantee='AWSDMS';
-select * from dba_sys_privs where grantee='AWSDMS';
-select * from dba_tab_privs where grantee='AWSDMS';
+select * from dba_users where username='FIVETRAN';
+select * from dba_role_privs where grantee='FIVETRAN';
+select * from dba_sys_privs where grantee='FIVETRAN';
+select * from dba_tab_privs where grantee='FIVETRAN';
 
 SELECT 
 LOG_MODE,
@@ -43,7 +43,8 @@ dba_tables
 WHERE owner = 'CASADM'
 AND table_name in
 (
-'CMPLY_REB_SLS_DTL'
+'RPT_CR_REB_PGM_SLS',
+'BA_PGM_SLS_HDR'
 )
 order by table_name;
 
@@ -52,7 +53,8 @@ FROM dba_log_groups
 WHERE owner = 'CASADM'
 AND table_name in
 (
-'CMPLY_REB_SLS_DTL'
+'RPT_CR_REB_PGM_SLS',
+'BA_PGM_SLS_HDR'
 )
 order by table_name;
 
@@ -62,9 +64,10 @@ where
 OWNER = 'CASADM'
 AND table_name in
 (
-'CMPLY_REB_SLS_DTL'
+'RPT_CR_REB_PGM_SLS',
+'BA_PGM_SLS_HDR'
 ) and
-GRANTEE = 'AWSDMS'
+GRANTEE = 'FIVETRAN'
 and
 PRIVILEGE = 'SELECT'
 order by table_name;
@@ -74,9 +77,53 @@ FROM ALL_CONSTRAINTS
 WHERE owner = 'CASADM'
 AND table_name in
 (
-'CMPLY_REB_SLS_DTL'
+'RPT_CR_REB_PGM_SLS',
+'BA_PGM_SLS_HDR'
 )
 AND constraint_type='P'
 order by table_name;
+
+-- alter statements
+
+SELECT 
+'ALTER TABLE '||OWNER||'.'||TABLE_NAME||' ADD SUPPLEMENTAL LOG DATA (PRIMARY KEY) COLUMNS;'
+FROM ALL_CONSTRAINTS
+WHERE owner = 'CASADM'
+AND table_name in
+(
+'RPT_CR_REB_PGM_SLS',
+'BA_PGM_SLS_HDR'
+)
+AND constraint_type='P'
+order by table_name;
+
+select
+'ALTER TABLE '||OWNER||'.'||TABLE_NAME||' ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;'
+from
+(select 
+owner,
+table_name
+from 
+dba_tables
+WHERE owner = 'CASADM'
+AND table_name in
+(
+'RPT_CR_REB_PGM_SLS',
+'BA_PGM_SLS_HDR'
+)
+minus
+SELECT 
+owner,
+table_name
+FROM ALL_CONSTRAINTS
+WHERE owner = 'CASADM'
+AND table_name in
+(
+'RPT_CR_REB_PGM_SLS',
+'BA_PGM_SLS_HDR'
+)
+AND constraint_type='P')
+order by
+table_name;
 
 spool off
