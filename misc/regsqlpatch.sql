@@ -20,8 +20,12 @@ set trimspool on
 
 spool &ns.regsqlpatch.log
 
+column ID format 99
+column ACTION_TIME format A30
+column LOGFILE format A110
+
 select 
-INSTALL_ID,
+INSTALL_ID ID,
 PATCH_ID,
 PATCH_TYPE,
 ACTION,
