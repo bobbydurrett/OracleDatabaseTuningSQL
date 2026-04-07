@@ -135,7 +135,7 @@ order by table_name;
 
 SELECT 
 'ALTER TABLE '||OWNER||'.'||TABLE_NAME||' ADD SUPPLEMENTAL LOG DATA (PRIMARY KEY) COLUMNS;'
-FROM ALL_CONSTRAINTS
+FROM ALL_CONSTRAINTS ac
 WHERE owner = 'WMCOMMADM'
 AND table_name in
 (
@@ -155,6 +155,13 @@ AND table_name in
 'CDMR_REASONCODE'
 )
 AND constraint_type='P'
+AND NOT EXISTS (
+         SELECT 1
+         FROM   dba_log_groups lg
+         WHERE  lg.owner = ac.owner
+         AND    lg.table_name = ac.table_name
+         AND    lg.log_group_type = 'PRIMARY KEY LOGGING'
+    )
 order by table_name;
 
 select
